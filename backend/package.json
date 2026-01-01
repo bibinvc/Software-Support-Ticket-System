@@ -4,7 +4,11 @@
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
-    "dev": "nodemon --watch src --exec node src/index.js"
+    "dev": "nodemon --watch src --exec node src/index.js",
+    "check-setup": "node check-setup.js",
+    "check-postgres": "node check-postgres.js",
+    "setup-db": "node setup-database.js",
+    "fix-password": "node fix-password.js"
   },
   "dependencies": {
     "bcrypt": "^5.1.0",
