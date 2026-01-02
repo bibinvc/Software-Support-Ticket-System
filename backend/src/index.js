@@ -64,6 +64,13 @@ app.get('/api/health', (req, res) => {
 
 const PORT = process.env.PORT || 4000;
 
+// Ensure uploads directory exists
+const fs = require('fs');
+const uploadDir = process.env.UPLOAD_DIR || path.join(__dirname, '../uploads');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
 async function start(){
   try{
     console.log('Connecting to database...');

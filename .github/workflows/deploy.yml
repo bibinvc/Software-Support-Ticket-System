@@ -1,0 +1,31 @@
+# GitHub Actions workflow for automated deployment
+# This is optional - you can use Railway, Vercel, or Render instead
+
+name: Deploy
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  # This workflow is a placeholder
+  # For actual deployment, use Railway, Vercel, or Render
+  # They have built-in GitHub integration
+  
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      - name: Install dependencies
+        run: |
+          cd backend && npm install
+          cd ../frontend && npm install
+      - name: Build frontend
+        run: cd frontend && npm run build
+

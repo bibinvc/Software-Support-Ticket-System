@@ -45,6 +45,15 @@ A full-featured, modern support ticket management system built with React, Node.
 - **bcrypt** - Password hashing
 - **Multer** - File upload handling
 
+## 🚀 Quick Deploy (Free)
+
+Want to deploy this project for free? Check out **[FREE_DEPLOYMENT_GUIDE.md](./FREE_DEPLOYMENT_GUIDE.md)** for step-by-step instructions!
+
+**Recommended Free Hosting:**
+- **Frontend**: [Vercel](https://vercel.com) (Free forever)
+- **Backend**: [Railway](https://railway.app) or [Render](https://render.com) (Free tiers)
+- **Database**: [Supabase](https://supabase.com) (500MB free)
+
 ## Prerequisites
 
 - Node.js (v16 or higher)
