@@ -24,15 +24,15 @@ Ticket.belongsTo(Category, { foreignKey: 'category_id', as: 'category' });
 Ticket.belongsTo(Priority, { foreignKey: 'priority_id', as: 'priority' });
 Ticket.belongsTo(SLAPolicy, { foreignKey: 'sla_policy_id', as: 'sla_policy' });
 
-Ticket.hasMany(TicketComment, { foreignKey: 'ticket_id' });
+Ticket.hasMany(TicketComment, { foreignKey: 'ticket_id', as: 'ticket_comments' });
 TicketComment.belongsTo(Ticket, { foreignKey: 'ticket_id' });
 TicketComment.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 
-Ticket.hasMany(Attachment, { foreignKey: 'ticket_id' });
+Ticket.hasMany(Attachment, { foreignKey: 'ticket_id', as: 'attachments' });
 Attachment.belongsTo(Ticket, { foreignKey: 'ticket_id' });
 Attachment.belongsTo(User, { foreignKey: 'uploaded_by', as: 'uploader' });
 
-Ticket.hasMany(TicketAssignment, { foreignKey: 'ticket_id' });
+Ticket.hasMany(TicketAssignment, { foreignKey: 'ticket_id', as: 'ticket_assignments' });
 TicketAssignment.belongsTo(Ticket, { foreignKey: 'ticket_id' });
 TicketAssignment.belongsTo(User, { foreignKey: 'agent_id', as: 'agent' });
 TicketAssignment.belongsTo(User, { foreignKey: 'assigned_by', as: 'assigner' });

@@ -10,6 +10,7 @@ import Home from './pages/Home'
 import AdminUsers from './pages/AdminUsers'
 import AdminCategories from './pages/AdminCategories'
 import AdminPriorities from './pages/AdminPriorities'
+import AdminAuditLogs from './pages/AdminAuditLogs'
 import ProtectedRoute from './components/ProtectedRoute'
 import './index.css'
 
@@ -17,7 +18,7 @@ import Header from './components/Header'
 import Footer from './components/Footer'
 
 const App = () => (
-  <BrowserRouter>
+  <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
     <Header />
     <main className="container mx-auto px-4 app-container py-8 min-h-screen">
       <Routes>
@@ -69,6 +70,22 @@ const App = () => (
           element={
             <ProtectedRoute requireAdmin>
               <AdminPriorities />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/admin/audit" 
+          element={
+            <ProtectedRoute requireAdmin>
+              <AdminAuditLogs />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/admin/audit/ticket/:ticketId" 
+          element={
+            <ProtectedRoute>
+              <AdminAuditLogs />
             </ProtectedRoute>
           } 
         />

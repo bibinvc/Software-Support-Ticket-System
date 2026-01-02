@@ -50,6 +50,7 @@ export default function Header(){
                     <li><Link to="/admin/users">Users</Link></li>
                     <li><Link to="/admin/categories">Categories</Link></li>
                     <li><Link to="/admin/priorities">Priorities</Link></li>
+                    <li><Link to="/admin/audit">Audit Logs</Link></li>
                   </ul>
                 </div>
               )}

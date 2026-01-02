@@ -1,6 +1,7 @@
 const express = require('express');
 const { TicketComment } = require('../models');
 const { authenticate, requireRole } = require('../middleware/auth');
+const { createAuditLog } = require('../middleware/audit');
 
 const router = express.Router();
 
@@ -32,6 +33,13 @@ router.post('/:id/comments', authenticate, async (req,res)=>{
     
     const fullComment = await TicketComment.findByPk(comment.id, {
       include: [{ model: require('../models').User, as: 'user', attributes: ['id', 'name', 'email'] }]
+    });
+    
+    // Log comment creation
+    await createAuditLog('ticket', ticket_id, 'commented', req.user.id, {
+      comment_id: comment.id,
+      is_internal: internalFlag,
+      message_preview: message.substring(0, 100) // First 100 chars
     });
     
     res.status(201).json(fullComment);

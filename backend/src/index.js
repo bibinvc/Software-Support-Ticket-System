@@ -10,6 +10,7 @@ const usersRoutes = require('./routes/users');
 const categoriesRoutes = require('./routes/categories');
 const prioritiesRoutes = require('./routes/priorities');
 const statisticsRoutes = require('./routes/statistics');
+const auditRoutes = require('./routes/audit');
 
 const app = express();
 
@@ -21,6 +22,11 @@ app.use(cors({
 
 app.use(express.json());
 
+// Serve uploaded files statically
+const path = require('path');
+const uploadDir = process.env.UPLOAD_DIR || path.join(__dirname, '../uploads');
+app.use('/uploads', express.static(uploadDir));
+
 app.use('/api/auth', authRoutes);
 app.use('/api/tickets', ticketsRoutes);
 app.use('/api/tickets', commentsRoutes);
@@ -29,6 +35,27 @@ app.use('/api/users', usersRoutes);
 app.use('/api/categories', categoriesRoutes);
 app.use('/api/priorities', prioritiesRoutes);
 app.use('/api/statistics', statisticsRoutes);
+app.use('/api/audit', auditRoutes);
+
+// Root API endpoint
+app.get('/api', (req, res) => {
+  res.json({
+    message: 'Software Support Ticket System API',
+    version: '1.0.0',
+    status: 'running',
+    endpoints: {
+      auth: '/api/auth',
+      tickets: '/api/tickets',
+      attachments: '/api/attachments',
+      users: '/api/users',
+      categories: '/api/categories',
+      priorities: '/api/priorities',
+      statistics: '/api/statistics',
+      audit: '/api/audit',
+      health: '/api/health'
+    }
+  });
+});
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

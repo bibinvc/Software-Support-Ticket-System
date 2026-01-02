@@ -89,7 +89,7 @@ export default function Dashboard(){
 
       {/* Statistics Cards */}
       {stats && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           <div className="stat bg-base-200 rounded-lg shadow">
             <div className="stat-title">Total Tickets</div>
             <div className="stat-value text-primary">{stats.totals?.total || 0}</div>
@@ -106,8 +106,48 @@ export default function Dashboard(){
             <div className="stat-title">Resolved</div>
             <div className="stat-value text-success">{stats.totals?.resolved || 0}</div>
           </div>
+          <div className="stat bg-base-200 rounded-lg shadow">
+            <div className="stat-title">Closed</div>
+            <div className="stat-value text-neutral">{stats.totals?.closed || 0}</div>
+          </div>
         </div>
       )}
+
+      {/* Quick Filter Tabs */}
+      <div className="bg-base-100 p-4 rounded-lg shadow">
+        <div className="flex flex-wrap gap-2">
+          <button
+            className={`btn btn-sm ${!filters.status ? 'btn-primary' : 'btn-ghost'}`}
+            onClick={() => setFilters({ ...filters, status: '' })}
+          >
+            All
+          </button>
+          <button
+            className={`btn btn-sm ${filters.status === 'Open' ? 'btn-info' : 'btn-ghost'}`}
+            onClick={() => setFilters({ ...filters, status: 'Open' })}
+          >
+            Open ({stats?.totals?.open || 0})
+          </button>
+          <button
+            className={`btn btn-sm ${filters.status === 'In Progress' ? 'btn-warning' : 'btn-ghost'}`}
+            onClick={() => setFilters({ ...filters, status: 'In Progress' })}
+          >
+            In Progress ({stats?.totals?.inProgress || 0})
+          </button>
+          <button
+            className={`btn btn-sm ${filters.status === 'Resolved' ? 'btn-success' : 'btn-ghost'}`}
+            onClick={() => setFilters({ ...filters, status: 'Resolved' })}
+          >
+            Resolved ({stats?.totals?.resolved || 0})
+          </button>
+          <button
+            className={`btn btn-sm ${filters.status === 'Closed' ? 'btn-neutral' : 'btn-ghost'}`}
+            onClick={() => setFilters({ ...filters, status: 'Closed' })}
+          >
+            Closed ({stats?.totals?.closed || 0})
+          </button>
+        </div>
+      </div>
 
       {/* Filters and Search */}
       <div className="bg-base-100 p-4 rounded-lg shadow">

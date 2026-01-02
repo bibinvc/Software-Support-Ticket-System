@@ -8,7 +8,9 @@
     "check-setup": "node check-setup.js",
     "check-postgres": "node check-postgres.js",
     "setup-db": "node setup-database.js",
-    "fix-password": "node fix-password.js"
+    "reset-db": "node reset-database.js",
+    "fix-password": "node fix-password.js",
+    "fix-user-passwords": "node fix-user-passwords.js"
   },
   "dependencies": {
     "bcrypt": "^5.1.0",

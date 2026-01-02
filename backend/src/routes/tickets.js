@@ -1,6 +1,7 @@
 const express = require('express');
 const { Ticket, TicketComment, TicketAssignment, Attachment } = require('../models');
 const { authenticate, requireRole } = require('../middleware/auth');
+const { logTicketChange, createAuditLog } = require('../middleware/audit');
 
 const router = express.Router();
 
@@ -42,17 +43,20 @@ router.get('/', authenticate, async (req,res)=>{
         { model: require('../models').Priority, as: 'priority', attributes: ['id', 'name', 'rank'] },
         { model: require('../models').Category, as: 'category', attributes: ['id', 'name'] },
         { 
-          model: TicketAssignment, 
+          model: TicketAssignment,
+          as: 'ticket_assignments',
           include: [{ model: require('../models').User, as: 'agent', attributes: ['id', 'name', 'email'] }],
           limit: 1,
-          order: [['assigned_at', 'DESC']]
+          order: [['assigned_at', 'DESC']],
+          separate: true
         }
       ]
     });
     
     res.json({ tickets, total: count, page: parseInt(page), limit: parseInt(limit) });
   } catch(err) {
-    res.status(500).json({ error: err.message });
+    console.error('Tickets list error:', err);
+    res.status(500).json({ error: err.message, details: process.env.NODE_ENV === 'development' ? err.stack : undefined });
   }
 });
 
@@ -69,6 +73,14 @@ router.post('/', authenticate, async (req,res)=>{
       category_id: category_id || null, 
       created_by: req.user.id,
       status: 'Open'
+    });
+    
+    // Log ticket creation
+    await createAuditLog('ticket', ticket.id, 'created', req.user.id, {
+      title: ticket.title,
+      status: ticket.status,
+      priority_id: ticket.priority_id,
+      category_id: ticket.category_id
     });
     
     const fullTicket = await Ticket.findByPk(ticket.id, {
@@ -94,21 +106,27 @@ router.get('/:id', authenticate, async (req,res)=>{
         { model: require('../models').Priority, as: 'priority', attributes: ['id', 'name', 'rank'] },
         { model: require('../models').Category, as: 'category', attributes: ['id', 'name', 'description'] },
         { 
-          model: TicketComment, 
+          model: TicketComment,
+          as: 'ticket_comments',
           include: [{ model: require('../models').User, as: 'user', attributes: ['id', 'name', 'email'] }],
-          order: [['created_at', 'ASC']]
+          order: [['created_at', 'ASC']],
+          separate: true
         },
         { 
           model: Attachment,
-          include: [{ model: require('../models').User, as: 'uploader', attributes: ['id', 'name', 'email'] }]
+          as: 'attachments',
+          include: [{ model: require('../models').User, as: 'uploader', attributes: ['id', 'name', 'email'] }],
+          separate: true
         },
         { 
           model: TicketAssignment,
+          as: 'ticket_assignments',
           include: [
             { model: require('../models').User, as: 'agent', attributes: ['id', 'name', 'email'] },
             { model: require('../models').User, as: 'assigner', attributes: ['id', 'name', 'email'] }
           ],
-          order: [['assigned_at', 'DESC']]
+          order: [['assigned_at', 'DESC']],
+          separate: true
         }
       ]
     });
@@ -142,6 +160,15 @@ router.patch('/:id', authenticate, async (req,res)=>{
       return res.status(403).json({ error: 'Forbidden' });
     }
     
+    // Store old values for audit log
+    const oldValues = {
+      status: ticket.status,
+      priority_id: ticket.priority_id,
+      category_id: ticket.category_id,
+      title: ticket.title,
+      description: ticket.description
+    };
+    
     const { status, priority_id, category_id, title, description } = req.body;
     if(status && ['Open', 'In Progress', 'Resolved', 'Closed'].includes(status)) {
       ticket.status = status;
@@ -152,6 +179,21 @@ router.patch('/:id', authenticate, async (req,res)=>{
     if(description) ticket.description = description;
     
     await ticket.save();
+    
+    // Log ticket changes
+    await logTicketChange(
+      ticket.id,
+      req.user.id,
+      'updated',
+      oldValues,
+      {
+        status: ticket.status,
+        priority_id: ticket.priority_id,
+        category_id: ticket.category_id,
+        title: ticket.title,
+        description: ticket.description
+      }
+    );
     
     const updatedTicket = await Ticket.findByPk(ticket.id, {
       include: [
@@ -175,6 +217,10 @@ router.post('/:id/assign', authenticate, requireRole(['agent','admin']), async (
     const ticket = await Ticket.findByPk(ticket_id);
     if(!ticket) return res.status(404).json({ error: 'Ticket not found' });
     
+    // Get old assignment for audit log
+    const oldAssignment = await TicketAssignment.findOne({ where: { ticket_id } });
+    const oldAgentId = oldAssignment?.agent_id || null;
+    
     // Remove existing assignment for this ticket
     await TicketAssignment.destroy({ where: { ticket_id } });
     
@@ -184,6 +230,13 @@ router.post('/:id/assign', authenticate, requireRole(['agent','admin']), async (
       agent_id: agent_id || null, 
       assigned_by: req.user.id,
       note 
+    });
+    
+    // Log assignment change
+    await createAuditLog('ticket', ticket_id, 'assigned', req.user.id, {
+      old_agent_id: oldAgentId,
+      new_agent_id: agent_id || null,
+      note: note || null
     });
     
     const fullAssignment = await TicketAssignment.findByPk(assignment.id, {

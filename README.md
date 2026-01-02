@@ -62,19 +62,32 @@ cd Software-Support-Ticket-System
 
 ### 2. Database Setup
 
-Create a PostgreSQL database:
+**Quick Setup (Recommended):**
 
+1. **Start PostgreSQL:**
+   - Windows: Double-click `start-postgres.bat` or open Services (`services.msc`) and start PostgreSQL service
+   - Linux/Mac: `sudo service postgresql start` or `pg_ctl start`
+
+2. **Run Database Setup:**
+   ```bash
+   cd backend
+   npm run setup-db
+   ```
+   This will automatically create the database and run all migrations.
+
+**Manual Setup:**
+
+Create a PostgreSQL database:
 ```sql
 CREATE DATABASE ssts_db;
 ```
 
 Run the database migration:
-
 ```bash
 psql -U postgres -d ssts_db -f db/migrations/schema.sql
 ```
 
-Or connect to your database and run the SQL file manually.
+For detailed database setup instructions, see [DATABASE_SETUP.md](DATABASE_SETUP.md).
 
 ### 3. Backend Setup
 
@@ -249,6 +262,20 @@ Software-Support-Ticket-System/
 ## License
 
 This project is open source and available under the MIT License.
+
+## Additional Resources
+
+- **[SETUP.md](SETUP.md)** - Detailed setup guide
+- **[DATABASE_SETUP.md](DATABASE_SETUP.md)** - Complete database setup instructions
+- **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** - Common issues and solutions
+- **[FIX_PASSWORD.md](FIX_PASSWORD.md)** - Password reset guide
+
+## Helper Scripts
+
+- **start-postgres.bat** - Start PostgreSQL service on Windows
+- **open-database.bat** - Open database in pgAdmin or psql
+- **sample-data.sql** - Sample SQL queries to populate test data
+- **view-tickets.sql** - SQL queries to view tickets
 
 ## Support
 

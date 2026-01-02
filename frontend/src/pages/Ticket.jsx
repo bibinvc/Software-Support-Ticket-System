@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import { ticketsAPI, commentsAPI, attachmentsAPI, categoriesAPI, prioritiesAPI, usersAPI } from '../services/api'
+import { useParams, useNavigate, Link } from 'react-router-dom'
+import { ticketsAPI, commentsAPI, attachmentsAPI, categoriesAPI, prioritiesAPI, usersAPI, auditAPI } from '../services/api'
 
 export default function Ticket(){
   const { id } = useParams()
@@ -25,6 +25,7 @@ export default function Ticket(){
   const [categories, setCategories] = useState([])
   const [priorities, setPriorities] = useState([])
   const [agents, setAgents] = useState([])
+  const [auditLogs, setAuditLogs] = useState([])
 
   const user = JSON.parse(localStorage.getItem('user') || '{}')
   const isAdmin = user.role === 'admin'
@@ -36,7 +37,17 @@ export default function Ticket(){
     if (isAgent) {
       loadOptions()
     }
+    loadAuditLogs()
   }, [id])
+  
+  const loadAuditLogs = async () => {
+    try {
+      const res = await auditAPI.getByTicket(id)
+      setAuditLogs(res.data)
+    } catch (err) {
+      console.error('Failed to load audit logs:', err)
+    }
+  }
 
   const loadTicket = async () => {
     setLoading(true)
@@ -79,6 +90,7 @@ export default function Ticket(){
       setMessage('')
       setIsInternal(false)
       await loadTicket()
+      await loadAuditLogs() // Reload audit logs after comment
     } catch(err) {
       setError(err.response?.data?.error || 'Failed to post comment')
     } finally {
@@ -93,6 +105,7 @@ export default function Ticket(){
       await attachmentsAPI.upload(id, file)
       setFile(null)
       await loadTicket()
+      await loadAuditLogs() // Reload audit logs after upload
     } catch(err) {
       setError(err.response?.data?.error || 'Failed to upload file')
     } finally {
@@ -117,6 +130,7 @@ export default function Ticket(){
       
       setEditing(false)
       await loadTicket()
+      await loadAuditLogs() // Reload audit logs after update
     } catch(err) {
       setError(err.response?.data?.error || 'Failed to update ticket')
     } finally {
@@ -294,24 +308,45 @@ export default function Ticket(){
       {/* Attachments */}
       {ticket.attachments && ticket.attachments.length > 0 && (
         <div className="bg-base-100 p-6 rounded-lg shadow">
-          <h3 className="text-xl font-semibold mb-4">Attachments</h3>
-          <div className="space-y-2">
-            {ticket.attachments.map(att => (
-              <div key={att.id} className="flex items-center justify-between p-3 bg-base-200 rounded">
-                <div>
-                  <p className="font-medium">{att.filename}</p>
-                  <p className="text-sm text-gray-500">
-                    {(att.size_bytes / 1024).toFixed(2)} KB • {new Date(att.created_at).toLocaleDateString()}
-                  </p>
+          <h3 className="text-xl font-semibold mb-4">Attachments ({ticket.attachments.length})</h3>
+          <div className="space-y-4">
+            {ticket.attachments.map(att => {
+              const isImage = att.content_type && att.content_type.startsWith('image/');
+              const imageUrl = isImage ? `http://localhost:4000/api/attachments/${att.id}/download` : null;
+              
+              return (
+                <div key={att.id} className="p-4 bg-base-200 rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex-1">
+                      <p className="font-medium">{att.filename}</p>
+                      <p className="text-sm text-gray-500">
+                        {(att.size_bytes / 1024).toFixed(2)} KB • {new Date(att.created_at).toLocaleDateString()}
+                        {att.uploader && ` • Uploaded by: ${att.uploader.name}`}
+                      </p>
+                    </div>
+                    <button
+                      className="btn btn-sm btn-primary"
+                      onClick={() => downloadFile(att.id, att.filename)}
+                    >
+                      Download
+                    </button>
+                  </div>
+                  {isImage && imageUrl && (
+                    <div className="mt-3">
+                      <img 
+                        src={imageUrl} 
+                        alt={att.filename}
+                        className="max-w-full h-auto rounded-lg border border-base-300"
+                        style={{ maxHeight: '400px' }}
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                        }}
+                      />
+                    </div>
+                  )}
                 </div>
-                <button
-                  className="btn btn-sm"
-                  onClick={() => downloadFile(att.id, att.filename)}
-                >
-                  Download
-                </button>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -398,6 +433,75 @@ export default function Ticket(){
           </div>
         </div>
       </div>
+
+      {/* Audit Logs */}
+      {(isAgent || (ticket && ticket.created_by === user.id)) && (
+        <div className="bg-base-100 p-6 rounded-lg shadow">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xl font-semibold">Activity History</h3>
+            {isAdmin && (
+              <Link to={`/admin/audit/ticket/${id}`} className="btn btn-sm btn-ghost">
+                View Full Logs
+              </Link>
+            )}
+          </div>
+          <div className="space-y-3">
+            {auditLogs.length === 0 ? (
+              <p className="text-center text-gray-500 py-4">No activity history yet</p>
+            ) : (
+              auditLogs.slice(0, 5).map(log => (
+              <div key={log.id} className="text-sm p-3 bg-base-200 rounded">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-semibold">{log.performer?.name || 'System'}</span>
+                  <span className="text-gray-500 text-xs">
+                    {new Date(log.created_at).toLocaleString()}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="badge badge-sm">{log.action}</span>
+                  {log.payload?.changes && (
+                    <span className="text-xs text-gray-600">
+                      {Object.keys(log.payload.changes).length} change(s)
+                    </span>
+                  )}
+                </div>
+                {log.payload?.changes && (
+                  <div className="text-xs text-gray-600 mt-2">
+                    {Object.keys(log.payload.changes).map(key => {
+                      const change = log.payload.changes[key]
+                      return (
+                        <div key={key}>
+                          {key}: <span className="text-error">{String(change.from || 'null')}</span> → <span className="text-success">{String(change.to || 'null')}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+                {log.action === 'commented' && log.payload && (
+                  <div className="text-xs text-gray-600 mt-2">
+                    Comment: {log.payload.message_preview}
+                    {log.payload.is_internal && <span className="badge badge-warning badge-xs ml-1">Internal</span>}
+                  </div>
+                )}
+                {log.action === 'attachment_uploaded' && log.payload && (
+                  <div className="text-xs text-gray-600 mt-2">
+                    Uploaded: {log.payload.filename}
+                  </div>
+                )}
+              </div>
+            ))
+            )}
+            {auditLogs.length > 5 && (
+              <p className="text-sm text-gray-500 text-center">
+                Showing 5 of {auditLogs.length} activities
+                {isAdmin && (
+                  <Link to={`/admin/audit/ticket/${id}`} className="link ml-2">View all</Link>
+                )}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

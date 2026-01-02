@@ -21,8 +21,12 @@ export default function Footer(){
 
         <div>
           <div className="font-semibold mb-2">Contact</div>
-          <div className="text-sm text-gray-600">support@example.com</div>
-          <div className="text-sm text-gray-600 mt-2">+1 (555) 123-4567</div>
+          <div className="text-sm text-gray-600">
+            <a href="mailto:support@ticket.com" className="hover:text-teal-600">support@ticket.com</a>
+          </div>
+          <div className="text-sm text-gray-600 mt-2">
+            <a href="tel:+33745720912" className="hover:text-teal-600">+33 7 45 72 09 12</a>
+          </div>
           <div className="mt-4 flex items-center gap-3">
             <a aria-label="twitter" className="text-gray-400 hover:text-teal-600" href="#">T</a>
             <a aria-label="linkedin" className="text-gray-400 hover:text-teal-600" href="#">L</a>
