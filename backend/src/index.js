@@ -24,7 +24,14 @@ app.use(express.json());
 
 // Serve uploaded files statically
 const path = require('path');
+const fs = require('fs');
 const uploadDir = process.env.UPLOAD_DIR || path.join(__dirname, '../uploads');
+
+// Ensure uploads directory exists
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
 app.use('/uploads', express.static(uploadDir));
 
 app.use('/api/auth', authRoutes);
@@ -63,13 +70,6 @@ app.get('/api/health', (req, res) => {
 });
 
 const PORT = process.env.PORT || 4000;
-
-// Ensure uploads directory exists
-const fs = require('fs');
-const uploadDir = process.env.UPLOAD_DIR || path.join(__dirname, '../uploads');
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
 
 async function start(){
   try{
