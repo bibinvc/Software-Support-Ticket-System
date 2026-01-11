@@ -1,15 +1,16 @@
 const express = require('express');
-const { User, Ticket } = require('../models');
+const { User, Service, Order } = require('../models');
 const { authenticate, requireRole } = require('../middleware/auth');
+const { apiLimiter } = require('../middleware/security');
 const bcrypt = require('bcrypt');
 
 const router = express.Router();
 
-// Get all users (admin/agent only)
-router.get('/', authenticate, requireRole(['admin', 'agent']), async (req, res) => {
+// Get all users (admin only)
+router.get('/', authenticate, requireRole(['admin']), apiLimiter, async (req, res) => {
   try {
     const users = await User.findAll({
-      attributes: { exclude: ['password_hash'] },
+      attributes: { exclude: ['password_hash', 'mfa_secret'] },
       order: [['created_at', 'DESC']]
     });
     res.json(users);
@@ -30,17 +31,25 @@ router.get('/me', authenticate, async (req, res) => {
   }
 });
 
-// Get user by ID
-router.get('/:id', authenticate, requireRole(['admin', 'agent']), async (req, res) => {
+// Get user by ID (admin or self)
+router.get('/:id', authenticate, apiLimiter, async (req, res) => {
   try {
+    // Users can view their own profile, admins can view anyone
+    if (req.user.role !== 'admin' && req.user.id !== parseInt(req.params.id)) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+    
     const user = await User.findByPk(req.params.id, {
-      attributes: { exclude: ['password_hash'] },
-      include: [{
-        model: Ticket,
-        as: 'tickets',
-        limit: 10,
-        order: [['created_at', 'DESC']]
-      }]
+      attributes: { exclude: ['password_hash', 'mfa_secret'] },
+      include: [
+        {
+          model: Service,
+          as: 'services',
+          limit: 5,
+          order: [['created_at', 'DESC']],
+          attributes: ['id', 'title', 'price', 'status']
+        }
+      ]
     });
     if (!user) return res.status(404).json({ error: 'User not found' });
     res.json(user);
@@ -50,14 +59,17 @@ router.get('/:id', authenticate, requireRole(['admin', 'agent']), async (req, re
 });
 
 // Create user (admin only)
-router.post('/', authenticate, requireRole(['admin']), async (req, res) => {
+router.post('/', authenticate, requireRole(['admin']), apiLimiter, async (req, res) => {
   try {
     const { name, email, password, role } = req.body;
     if (!email || !password) {
       return res.status(400).json({ error: 'Email and password required' });
     }
-    if (password.length < 6) {
-      return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    if (password.length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters' });
+    }
+    if (!['customer', 'provider', 'admin'].includes(role)) {
+      return res.status(400).json({ error: 'Invalid role' });
     }
     // Check if user already exists
     const existingUser = await User.findOne({ where: { email: email.trim().toLowerCase() } });
@@ -69,7 +81,7 @@ router.post('/', authenticate, requireRole(['admin']), async (req, res) => {
       name: name.trim(), 
       email: email.trim().toLowerCase(), 
       password_hash: password,  // Plain password - beforeCreate hook will hash it
-      role: role || 'user' 
+      role: role || 'customer' 
     });
     res.status(201).json({ id: user.id, name: user.name, email: user.email, role: user.role });
   } catch (err) {
@@ -78,7 +90,7 @@ router.post('/', authenticate, requireRole(['admin']), async (req, res) => {
 });
 
 // Update user
-router.patch('/:id', authenticate, async (req, res) => {
+router.patch('/:id', authenticate, apiLimiter, async (req, res) => {
   try {
     const user = await User.findByPk(req.params.id);
     if (!user) return res.status(404).json({ error: 'User not found' });
@@ -89,7 +101,7 @@ router.patch('/:id', authenticate, async (req, res) => {
     }
 
     // NEVER update password through this route - use /:id/password endpoint instead
-    const { name, email, role, is_active, password } = req.body;
+    const { name, email, role, is_active, password, phone, address, bio } = req.body;
     
     // Security: Ignore password if sent here (must use password endpoint)
     if (password) {
@@ -98,12 +110,18 @@ router.patch('/:id', authenticate, async (req, res) => {
     
     if (name) user.name = name;
     if (email) user.email = email;
-    if (role && req.user.role === 'admin') user.role = role;
+    if (phone !== undefined) user.phone = phone;
+    if (address !== undefined) user.address = address;
+    if (bio !== undefined) user.bio = bio;
+    if (role && req.user.role === 'admin' && ['customer', 'provider', 'admin'].includes(role)) {
+      user.role = role;
+    }
     if (is_active !== undefined && req.user.role === 'admin') user.is_active = is_active;
 
     await user.save();
-    // NEVER return password_hash in response
-    res.json({ id: user.id, name: user.name, email: user.email, role: user.role, is_active: user.is_active });
+    // NEVER return password_hash or mfa_secret in response
+    const userJson = user.toJSON();
+    res.json(userJson);
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
@@ -137,15 +155,15 @@ router.patch('/:id/password', authenticate, async (req, res) => {
   }
 });
 
-// Get agents (for assignment dropdowns)
-router.get('/agents/list', authenticate, requireRole(['admin', 'agent']), async (req, res) => {
+// Get providers list (for service listings)
+router.get('/providers/list', apiLimiter, async (req, res) => {
   try {
-    const agents = await User.findAll({
-      where: { role: ['agent', 'admin'], is_active: true },
-      attributes: ['id', 'name', 'email'],
-      order: [['name', 'ASC']]
+    const providers = await User.findAll({
+      where: { role: 'provider', is_active: true },
+      attributes: ['id', 'name', 'email', 'rating', 'bio'],
+      order: [['rating', 'DESC'], ['name', 'ASC']]
     });
-    res.json(agents);
+    res.json(providers);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

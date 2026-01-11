@@ -1,26 +1,25 @@
 require('dotenv').config();
 const express = require('express');
-const cors = require('cors');
 const { sequelize } = require('./models');
 const authRoutes = require('./routes/auth');
-const ticketsRoutes = require('./routes/tickets');
-const commentsRoutes = require('./routes/comments');
+const servicesRoutes = require('./routes/services');
+const ordersRoutes = require('./routes/orders');
 const attachmentsRoutes = require('./routes/attachments');
 const usersRoutes = require('./routes/users');
 const categoriesRoutes = require('./routes/categories');
-const prioritiesRoutes = require('./routes/priorities');
 const statisticsRoutes = require('./routes/statistics');
 const auditRoutes = require('./routes/audit');
+const { helmetConfig, corsOptions, apiLimiter } = require('./middleware/security');
 
 const app = express();
 
-// CORS configuration
-app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
-  credentials: true
-}));
+// Security middleware
+app.use(helmetConfig);
+app.use(require('cors')(corsOptions));
 
-app.use(express.json());
+// Body parsing with size limits
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Serve uploaded files statically
 const path = require('path');
@@ -34,29 +33,29 @@ if (!fs.existsSync(uploadDir)) {
 
 app.use('/uploads', express.static(uploadDir));
 
+// API routes
 app.use('/api/auth', authRoutes);
-app.use('/api/tickets', ticketsRoutes);
-app.use('/api/tickets', commentsRoutes);
+app.use('/api/services', servicesRoutes);
+app.use('/api/orders', ordersRoutes);
 app.use('/api/attachments', attachmentsRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/categories', categoriesRoutes);
-app.use('/api/priorities', prioritiesRoutes);
 app.use('/api/statistics', statisticsRoutes);
 app.use('/api/audit', auditRoutes);
 
 // Root API endpoint
-app.get('/api', (req, res) => {
+app.get('/api', apiLimiter, (req, res) => {
   res.json({
-    message: 'Software Support Ticket System API',
-    version: '1.0.0',
+    message: 'Sharing Economy Platform API',
+    version: '2.0.0',
     status: 'running',
     endpoints: {
       auth: '/api/auth',
-      tickets: '/api/tickets',
+      services: '/api/services',
+      orders: '/api/orders',
       attachments: '/api/attachments',
       users: '/api/users',
       categories: '/api/categories',
-      priorities: '/api/priorities',
       statistics: '/api/statistics',
       audit: '/api/audit',
       health: '/api/health'
@@ -66,7 +65,11 @@ app.get('/api', (req, res) => {
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'Server is running' });
+  res.json({ 
+    status: 'ok', 
+    message: 'Server is running',
+    timestamp: new Date().toISOString()
+  });
 });
 
 const PORT = process.env.PORT || 4000;

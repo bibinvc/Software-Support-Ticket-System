@@ -7,47 +7,59 @@ const sequelize = new Sequelize(url, {
 });
 
 const User = require('./user')(sequelize);
-const Ticket = require('./ticket')(sequelize);
-const TicketComment = require('./comment')(sequelize);
+const Service = require('./service')(sequelize);
+const Order = require('./order')(sequelize);
+const OrderMessage = require('./orderMessage')(sequelize);
 const Attachment = require('./attachment')(sequelize);
-const TicketAssignment = require('./assignment')(sequelize);
 const Category = require('./category')(sequelize);
-const Priority = require('./priority')(sequelize);
-const SLAPolicy = require('./slaPolicy')(sequelize);
 const AuditLog = require('./auditLog')(sequelize);
+const UserSession = require('./userSession')(sequelize);
 
-// Associations
-User.hasMany(Ticket, { foreignKey: 'created_by' });
-Ticket.belongsTo(User, { foreignKey: 'created_by', as: 'creator' });
+// User associations
+User.hasMany(Service, { foreignKey: 'provider_id', as: 'services' });
+User.hasMany(Order, { foreignKey: 'customer_id', as: 'customer_orders' });
+User.hasMany(Order, { foreignKey: 'provider_id', as: 'provider_orders' });
+User.hasMany(OrderMessage, { foreignKey: 'user_id', as: 'order_messages' });
+User.hasMany(Attachment, { foreignKey: 'uploaded_by', as: 'attachments' });
+User.hasMany(UserSession, { foreignKey: 'user_id', as: 'sessions' });
+User.hasMany(AuditLog, { foreignKey: 'performed_by', as: 'audit_logs' });
 
-Ticket.belongsTo(Category, { foreignKey: 'category_id', as: 'category' });
-Ticket.belongsTo(Priority, { foreignKey: 'priority_id', as: 'priority' });
-Ticket.belongsTo(SLAPolicy, { foreignKey: 'sla_policy_id', as: 'sla_policy' });
+// Service associations
+Service.belongsTo(User, { foreignKey: 'provider_id', as: 'provider' });
+Service.belongsTo(Category, { foreignKey: 'category_id', as: 'category' });
+Service.hasMany(Order, { foreignKey: 'service_id', as: 'orders' });
+Service.hasMany(Attachment, { foreignKey: 'service_id', as: 'attachments' });
 
-Ticket.hasMany(TicketComment, { foreignKey: 'ticket_id', as: 'ticket_comments' });
-TicketComment.belongsTo(Ticket, { foreignKey: 'ticket_id' });
-TicketComment.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+// Order associations
+Order.belongsTo(Service, { foreignKey: 'service_id', as: 'service' });
+Order.belongsTo(User, { foreignKey: 'customer_id', as: 'customer' });
+Order.belongsTo(User, { foreignKey: 'provider_id', as: 'provider' });
+Order.hasMany(OrderMessage, { foreignKey: 'order_id', as: 'messages' });
+Order.hasMany(Attachment, { foreignKey: 'order_id', as: 'attachments' });
 
-Ticket.hasMany(Attachment, { foreignKey: 'ticket_id', as: 'attachments' });
-Attachment.belongsTo(Ticket, { foreignKey: 'ticket_id' });
+// OrderMessage associations
+OrderMessage.belongsTo(Order, { foreignKey: 'order_id', as: 'order' });
+OrderMessage.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+
+// Attachment associations
+Attachment.belongsTo(Service, { foreignKey: 'service_id', as: 'service' });
+Attachment.belongsTo(Order, { foreignKey: 'order_id', as: 'order' });
 Attachment.belongsTo(User, { foreignKey: 'uploaded_by', as: 'uploader' });
 
-Ticket.hasMany(TicketAssignment, { foreignKey: 'ticket_id', as: 'ticket_assignments' });
-TicketAssignment.belongsTo(Ticket, { foreignKey: 'ticket_id' });
-TicketAssignment.belongsTo(User, { foreignKey: 'agent_id', as: 'agent' });
-TicketAssignment.belongsTo(User, { foreignKey: 'assigned_by', as: 'assigner' });
-
+// AuditLog associations
 AuditLog.belongsTo(User, { foreignKey: 'performed_by', as: 'performer' });
+
+// UserSession associations
+UserSession.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 
 module.exports = { 
   sequelize, 
   User, 
-  Ticket, 
-  TicketComment, 
+  Service,
+  Order,
+  OrderMessage,
   Attachment, 
-  TicketAssignment,
   Category,
-  Priority,
-  SLAPolicy,
-  AuditLog
+  AuditLog,
+  UserSession
 };

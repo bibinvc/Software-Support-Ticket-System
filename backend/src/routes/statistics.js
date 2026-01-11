@@ -1,116 +1,168 @@
 const express = require('express');
-const { sequelize, Ticket, User, TicketAssignment } = require('../models');
+const { sequelize, Service, Order, User } = require('../models');
 const { authenticate, requireRole } = require('../middleware/auth');
 const { Op } = require('sequelize');
+const { apiLimiter } = require('../middleware/security');
 
 const router = express.Router();
 
 // Get dashboard statistics
-router.get('/dashboard', authenticate, async (req, res) => {
+router.get('/dashboard', authenticate, apiLimiter, async (req, res) => {
   try {
-    const where = {};
-    if (req.user.role === 'user') {
-      where.created_by = req.user.id;
+    let stats = {};
+    
+    if (req.user.role === 'customer') {
+      // Customer statistics
+      const [
+        totalOrders,
+        pendingOrders,
+        confirmedOrders,
+        inProgressOrders,
+        completedOrders,
+        cancelledOrders,
+        recentOrders
+      ] = await Promise.all([
+        Order.count({ where: { customer_id: req.user.id } }),
+        Order.count({ where: { customer_id: req.user.id, status: 'pending' } }),
+        Order.count({ where: { customer_id: req.user.id, status: 'confirmed' } }),
+        Order.count({ where: { customer_id: req.user.id, status: 'in_progress' } }),
+        Order.count({ where: { customer_id: req.user.id, status: 'completed' } }),
+        Order.count({ where: { customer_id: req.user.id, status: 'cancelled' } }),
+        Order.findAll({
+          where: { customer_id: req.user.id },
+          limit: 10,
+          order: [['created_at', 'DESC']],
+          include: [
+            { model: Service, as: 'service', attributes: ['id', 'title', 'price'] },
+            { model: User, as: 'provider', attributes: ['id', 'name', 'email'] }
+          ]
+        })
+      ]);
+      
+      stats = {
+        totals: {
+          total: totalOrders,
+          pending: pendingOrders,
+          confirmed: confirmedOrders,
+          inProgress: inProgressOrders,
+          completed: completedOrders,
+          cancelled: cancelledOrders
+        },
+        byStatus: [
+          { status: 'pending', count: pendingOrders },
+          { status: 'confirmed', count: confirmedOrders },
+          { status: 'in_progress', count: inProgressOrders },
+          { status: 'completed', count: completedOrders },
+          { status: 'cancelled', count: cancelledOrders }
+        ],
+        recentOrders
+      };
+    } else if (req.user.role === 'provider') {
+      // Provider statistics
+      const [
+        totalServices,
+        activeServices,
+        totalOrders,
+        pendingOrders,
+        confirmedOrders,
+        inProgressOrders,
+        completedOrders,
+        recentOrders
+      ] = await Promise.all([
+        Service.count({ where: { provider_id: req.user.id } }),
+        Service.count({ where: { provider_id: req.user.id, status: 'active', is_available: true } }),
+        Order.count({ where: { provider_id: req.user.id } }),
+        Order.count({ where: { provider_id: req.user.id, status: 'pending' } }),
+        Order.count({ where: { provider_id: req.user.id, status: 'confirmed' } }),
+        Order.count({ where: { provider_id: req.user.id, status: 'in_progress' } }),
+        Order.count({ where: { provider_id: req.user.id, status: 'completed' } }),
+        Order.findAll({
+          where: { provider_id: req.user.id },
+          limit: 10,
+          order: [['created_at', 'DESC']],
+          include: [
+            { model: Service, as: 'service', attributes: ['id', 'title', 'price'] },
+            { model: User, as: 'customer', attributes: ['id', 'name', 'email'] }
+          ]
+        })
+      ]);
+      
+      stats = {
+        services: {
+          total: totalServices,
+          active: activeServices
+        },
+        orders: {
+          total: totalOrders,
+          pending: pendingOrders,
+          confirmed: confirmedOrders,
+          inProgress: inProgressOrders,
+          completed: completedOrders
+        },
+        byStatus: [
+          { status: 'pending', count: pendingOrders },
+          { status: 'confirmed', count: confirmedOrders },
+          { status: 'in_progress', count: inProgressOrders },
+          { status: 'completed', count: completedOrders }
+        ],
+        recentOrders
+      };
+    } else if (req.user.role === 'admin') {
+      // Admin statistics
+      const [
+        totalUsers,
+        totalCustomers,
+        totalProviders,
+        totalServices,
+        totalOrders,
+        ordersByStatus
+      ] = await Promise.all([
+        User.count(),
+        User.count({ where: { role: 'customer' } }),
+        User.count({ where: { role: 'provider' } }),
+        Service.count(),
+        Order.count(),
+        Order.findAll({
+          attributes: [
+            'status',
+            [sequelize.fn('COUNT', sequelize.col('id')), 'count']
+          ],
+          group: ['status'],
+          raw: true
+        })
+      ]);
+      
+      stats = {
+        users: {
+          total: totalUsers,
+          customers: totalCustomers,
+          providers: totalProviders
+        },
+        services: {
+          total: totalServices
+        },
+        orders: {
+          total: totalOrders,
+          byStatus: ordersByStatus
+        }
+      };
     }
 
-    const [
-      totalTickets,
-      openTickets,
-      inProgressTickets,
-      resolvedTickets,
-      closedTickets,
-      allTickets,
-      myAssignedTickets
-    ] = await Promise.all([
-      Ticket.count({ where }),
-      Ticket.count({ where: { ...where, status: 'Open' } }),
-      Ticket.count({ where: { ...where, status: 'In Progress' } }),
-      Ticket.count({ where: { ...where, status: 'Resolved' } }),
-      Ticket.count({ where: { ...where, status: 'Closed' } }),
-      Ticket.findAll({
-        where,
-        limit: 10,
-        order: [['created_at', 'DESC']],
-        include: [
-          { model: User, as: 'creator', attributes: ['name', 'email'] },
-          { model: require('../models').Priority, as: 'priority', attributes: ['name'] },
-          { model: require('../models').Category, as: 'category', attributes: ['name'] }
-        ]
-      }),
-      req.user.role !== 'user' ? (async () => {
-        try {
-          const assignments = await TicketAssignment.findAll({
-            where: { agent_id: req.user.id },
-            attributes: ['ticket_id']
-          });
-          if (assignments.length === 0) return 0;
-          const ticketIds = assignments.map(a => a.ticket_id);
-          const openTickets = await Ticket.count({
-            where: {
-              id: { [Op.in]: ticketIds },
-              status: { [Op.ne]: 'Closed' }
-            }
-          });
-          return openTickets;
-        } catch (err) {
-          console.error('Error fetching assigned tickets:', err);
-          return 0;
-        }
-      })() : Promise.resolve(0)
-    ]);
-
-    // Calculate tickets by priority manually
-    const ticketsByPriority = [];
-    const priorityMap = {};
-    allTickets.forEach(ticket => {
-      if (ticket.priority_id) {
-        if (!priorityMap[ticket.priority_id]) {
-          priorityMap[ticket.priority_id] = {
-            priority_id: ticket.priority_id,
-            count: 0,
-            priority: ticket.priority
-          };
-        }
-        priorityMap[ticket.priority_id].count++;
-      }
-    });
-    Object.values(priorityMap).forEach(p => ticketsByPriority.push(p));
-
-    // Calculate tickets by status manually
-    const ticketsByStatus = [
-      { status: 'Open', count: openTickets },
-      { status: 'In Progress', count: inProgressTickets },
-      { status: 'Resolved', count: resolvedTickets },
-      { status: 'Closed', count: closedTickets }
-    ];
-
-    res.json({
-      totals: {
-        total: totalTickets,
-        open: openTickets,
-        inProgress: inProgressTickets,
-        resolved: resolvedTickets,
-        closed: closedTickets
-      },
-      byPriority: ticketsByPriority,
-      byStatus: ticketsByStatus,
-      recentTickets: allTickets,
-      myAssignedTickets: myAssignedTickets || 0
-    });
+    res.json(stats);
   } catch (err) {
     console.error('Statistics error:', err);
-    res.status(500).json({ error: err.message, details: process.env.NODE_ENV === 'development' ? err.stack : undefined });
+    res.status(500).json({ error: err.message });
   }
 });
 
-// Get ticket trends (for charts)
-router.get('/trends', authenticate, requireRole(['admin', 'agent']), async (req, res) => {
+// Get order trends (for charts) - admin only
+router.get('/trends', authenticate, requireRole(['admin']), apiLimiter, async (req, res) => {
   try {
     const { days = 30 } = req.query;
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - parseInt(days));
 
-    const ticketsByDate = await Ticket.findAll({
+    const ordersByDate = await Order.findAll({
       attributes: [
         [sequelize.fn('DATE', sequelize.col('created_at')), 'date'],
         [sequelize.fn('COUNT', sequelize.col('id')), 'count']
@@ -123,7 +175,7 @@ router.get('/trends', authenticate, requireRole(['admin', 'agent']), async (req,
       raw: true
     });
 
-    res.json(ticketsByDate);
+    res.json(ordersByDate);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

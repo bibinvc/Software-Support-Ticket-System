@@ -10,7 +10,7 @@ const { Client } = require('pg');
 const fs = require('fs');
 const path = require('path');
 
-const DB_NAME = 'ssts_db';
+const DB_NAME = process.env.DB_NAME || 'sharing_economy_db';
 const SCHEMA_FILE = path.join(__dirname, '../db/migrations/schema.sql');
 const NON_INTERACTIVE = process.argv.includes('--yes') || process.argv.includes('-y');
 
@@ -107,7 +107,7 @@ async function setupDatabase() {
       SELECT table_name 
       FROM information_schema.tables 
       WHERE table_schema = 'public' 
-      AND table_name IN ('users', 'tickets')
+      AND table_name IN ('users', 'services', 'orders')
     `);
 
     if (tablesCheck.rows.length > 0) {
@@ -142,11 +142,9 @@ async function setupDatabase() {
     });
 
     // Check seed data
-    const prioritiesCheck = await dbClient.query('SELECT COUNT(*) as count FROM priorities');
     const categoriesCheck = await dbClient.query('SELECT COUNT(*) as count FROM categories');
 
-    console.log(`\n   ✅ Priorities: ${prioritiesCheck.rows[0].count} entries`);
-    console.log(`   ✅ Categories: ${categoriesCheck.rows[0].count} entries`);
+    console.log(`\n   ✅ Categories: ${categoriesCheck.rows[0].count} entries`);
 
     await dbClient.end();
 

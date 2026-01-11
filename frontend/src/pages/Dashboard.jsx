@@ -1,39 +1,42 @@
 import React, { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { ticketsAPI, statisticsAPI } from '../services/api'
+import { servicesAPI, ordersAPI, statisticsAPI } from '../services/api'
 
 export default function Dashboard(){
-  const [tickets, setTickets] = useState([])
+  const [services, setServices] = useState([])
+  const [orders, setOrders] = useState([])
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [filters, setFilters] = useState({
-    status: '',
-    priority_id: '',
-    category_id: '',
-    q: ''
-  })
-  const [searchQuery, setSearchQuery] = useState('')
+  const [activeTab, setActiveTab] = useState('overview')
   const nav = useNavigate()
 
   const user = JSON.parse(localStorage.getItem('user') || '{}')
   const isAdmin = user.role === 'admin'
-  const isAgent = user.role === 'agent' || isAdmin
+  const isProvider = user.role === 'provider'
+  const isCustomer = user.role === 'customer'
 
   useEffect(() => {
     loadData()
-  }, [filters])
+  }, [activeTab])
 
   const loadData = async () => {
     setLoading(true)
     try {
-      const params = { ...filters }
-      if (searchQuery) params.q = searchQuery
-      const [ticketsRes, statsRes] = await Promise.all([
-        ticketsAPI.getAll(params),
+      const [statsRes] = await Promise.all([
         statisticsAPI.getDashboard()
       ])
-      setTickets(ticketsRes.data.tickets || ticketsRes.data)
       setStats(statsRes.data)
+
+      // Load role-specific data
+      if (isProvider || isAdmin) {
+        const servicesRes = await servicesAPI.getMyServices({ limit: 10 })
+        setServices(servicesRes.data.services || [])
+      }
+
+      if (isCustomer || isProvider || isAdmin) {
+        const ordersRes = await ordersAPI.getAll({ limit: 10 })
+        setOrders(ordersRes.data.orders || [])
+      }
     } catch(err) {
       console.error('Failed to load data:', err)
     } finally {
@@ -41,30 +44,18 @@ export default function Dashboard(){
     }
   }
 
-  const handleSearch = (e) => {
-    e.preventDefault()
-    setFilters({ ...filters, q: searchQuery })
-  }
-
   const getStatusBadge = (status) => {
     const colors = {
-      'Open': 'badge-info',
-      'In Progress': 'badge-warning',
-      'Resolved': 'badge-success',
-      'Closed': 'badge-neutral'
+      'pending': 'badge-warning',
+      'confirmed': 'badge-info',
+      'in_progress': 'badge-primary',
+      'completed': 'badge-success',
+      'cancelled': 'badge-error',
+      'active': 'badge-success',
+      'inactive': 'badge-neutral',
+      'suspended': 'badge-error'
     }
-    return <span className={`badge ${colors[status] || 'badge-ghost'}`}>{status}</span>
-  }
-
-  const getPriorityBadge = (priority) => {
-    if (!priority) return null
-    const colors = {
-      'Low': 'badge-ghost',
-      'Medium': 'badge-info',
-      'High': 'badge-warning',
-      'Critical': 'badge-error'
-    }
-    return <span className={`badge badge-sm ${colors[priority.name] || 'badge-ghost'}`}>{priority.name}</span>
+    return <span className={`badge ${colors[status] || 'badge-ghost'}`}>{status.replace('_', ' ')}</span>
   }
 
   if (loading && !stats) {
@@ -77,162 +68,264 @@ export default function Dashboard(){
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-3xl font-bold">Dashboard</h2>
-          <p className="text-gray-500 mt-1">Welcome back, {user.name || 'User'}!</p>
+          <p className="text-gray-500 mt-1">Welcome back, {user.name || 'User'}! ({user.role})</p>
         </div>
-        <Link to="/tickets/new" className="btn btn-primary">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          New Ticket
-        </Link>
+        <div className="flex gap-2">
+          {isProvider && (
+            <Link to="/services/new" className="btn btn-primary">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              New Service
+            </Link>
+          )}
+          <Link to="/services" className="btn btn-outline">
+            Browse Services
+          </Link>
+        </div>
       </div>
 
-      {/* Statistics Cards */}
+      {/* Statistics Cards - Role Based */}
       {stats && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-          <div className="stat bg-base-200 rounded-lg shadow">
-            <div className="stat-title">Total Tickets</div>
-            <div className="stat-value text-primary">{stats.totals?.total || 0}</div>
-          </div>
-          <div className="stat bg-base-200 rounded-lg shadow">
-            <div className="stat-title">Open</div>
-            <div className="stat-value text-info">{stats.totals?.open || 0}</div>
-          </div>
-          <div className="stat bg-base-200 rounded-lg shadow">
-            <div className="stat-title">In Progress</div>
-            <div className="stat-value text-warning">{stats.totals?.inProgress || 0}</div>
-          </div>
-          <div className="stat bg-base-200 rounded-lg shadow">
-            <div className="stat-title">Resolved</div>
-            <div className="stat-value text-success">{stats.totals?.resolved || 0}</div>
-          </div>
-          <div className="stat bg-base-200 rounded-lg shadow">
-            <div className="stat-title">Closed</div>
-            <div className="stat-value text-neutral">{stats.totals?.closed || 0}</div>
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {isCustomer && (
+            <>
+              <div className="stat bg-base-200 rounded-lg shadow">
+                <div className="stat-title">Total Orders</div>
+                <div className="stat-value text-primary">{stats.totals?.total || 0}</div>
+              </div>
+              <div className="stat bg-base-200 rounded-lg shadow">
+                <div className="stat-title">Pending</div>
+                <div className="stat-value text-warning">{stats.totals?.pending || 0}</div>
+              </div>
+              <div className="stat bg-base-200 rounded-lg shadow">
+                <div className="stat-title">In Progress</div>
+                <div className="stat-value text-info">{stats.totals?.inProgress || 0}</div>
+              </div>
+              <div className="stat bg-base-200 rounded-lg shadow">
+                <div className="stat-title">Completed</div>
+                <div className="stat-value text-success">{stats.totals?.completed || 0}</div>
+              </div>
+            </>
+          )}
+
+          {isProvider && (
+            <>
+              <div className="stat bg-base-200 rounded-lg shadow">
+                <div className="stat-title">My Services</div>
+                <div className="stat-value text-primary">{stats.services?.total || 0}</div>
+                <div className="stat-desc">Active: {stats.services?.active || 0}</div>
+              </div>
+              <div className="stat bg-base-200 rounded-lg shadow">
+                <div className="stat-title">Total Orders</div>
+                <div className="stat-value text-info">{stats.orders?.total || 0}</div>
+              </div>
+              <div className="stat bg-base-200 rounded-lg shadow">
+                <div className="stat-title">Pending</div>
+                <div className="stat-value text-warning">{stats.orders?.pending || 0}</div>
+              </div>
+              <div className="stat bg-base-200 rounded-lg shadow">
+                <div className="stat-title">In Progress</div>
+                <div className="stat-value text-primary">{stats.orders?.inProgress || 0}</div>
+              </div>
+            </>
+          )}
+
+          {isAdmin && (
+            <>
+              <div className="stat bg-base-200 rounded-lg shadow">
+                <div className="stat-title">Total Users</div>
+                <div className="stat-value text-primary">{stats.users?.total || 0}</div>
+                <div className="stat-desc">Customers: {stats.users?.customers || 0} | Providers: {stats.users?.providers || 0}</div>
+              </div>
+              <div className="stat bg-base-200 rounded-lg shadow">
+                <div className="stat-title">Total Services</div>
+                <div className="stat-value text-info">{stats.services?.total || 0}</div>
+              </div>
+              <div className="stat bg-base-200 rounded-lg shadow">
+                <div className="stat-title">Total Orders</div>
+                <div className="stat-value text-success">{stats.orders?.total || 0}</div>
+              </div>
+              <div className="stat bg-base-200 rounded-lg shadow">
+                <div className="stat-title">Platform Health</div>
+                <div className="stat-value text-success">Active</div>
+              </div>
+            </>
+          )}
         </div>
       )}
 
-      {/* Quick Filter Tabs */}
-      <div className="bg-base-100 p-4 rounded-lg shadow">
-        <div className="flex flex-wrap gap-2">
+      {/* Tabs */}
+      <div className="tabs tabs-boxed">
+        <button
+          className={`tab ${activeTab === 'overview' ? 'tab-active' : ''}`}
+          onClick={() => setActiveTab('overview')}
+        >
+          Overview
+        </button>
+        {(isProvider || isAdmin) && (
           <button
-            className={`btn btn-sm ${!filters.status ? 'btn-primary' : 'btn-ghost'}`}
-            onClick={() => setFilters({ ...filters, status: '' })}
+            className={`tab ${activeTab === 'services' ? 'tab-active' : ''}`}
+            onClick={() => setActiveTab('services')}
           >
-            All
+            My Services
           </button>
+        )}
+        {(isCustomer || isProvider || isAdmin) && (
           <button
-            className={`btn btn-sm ${filters.status === 'Open' ? 'btn-info' : 'btn-ghost'}`}
-            onClick={() => setFilters({ ...filters, status: 'Open' })}
+            className={`tab ${activeTab === 'orders' ? 'tab-active' : ''}`}
+            onClick={() => setActiveTab('orders')}
           >
-            Open ({stats?.totals?.open || 0})
+            Orders
           </button>
-          <button
-            className={`btn btn-sm ${filters.status === 'In Progress' ? 'btn-warning' : 'btn-ghost'}`}
-            onClick={() => setFilters({ ...filters, status: 'In Progress' })}
-          >
-            In Progress ({stats?.totals?.inProgress || 0})
-          </button>
-          <button
-            className={`btn btn-sm ${filters.status === 'Resolved' ? 'btn-success' : 'btn-ghost'}`}
-            onClick={() => setFilters({ ...filters, status: 'Resolved' })}
-          >
-            Resolved ({stats?.totals?.resolved || 0})
-          </button>
-          <button
-            className={`btn btn-sm ${filters.status === 'Closed' ? 'btn-neutral' : 'btn-ghost'}`}
-            onClick={() => setFilters({ ...filters, status: 'Closed' })}
-          >
-            Closed ({stats?.totals?.closed || 0})
-          </button>
-        </div>
+        )}
       </div>
 
-      {/* Filters and Search */}
-      <div className="bg-base-100 p-4 rounded-lg shadow">
-        <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-4">
-          <div className="flex-1">
-            <input
-              type="text"
-              placeholder="Search tickets..."
-              className="input input-bordered w-full"
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-            />
-          </div>
-          <select
-            className="select select-bordered"
-            value={filters.status}
-            onChange={e => setFilters({ ...filters, status: e.target.value })}
-          >
-            <option value="">All Statuses</option>
-            <option value="Open">Open</option>
-            <option value="In Progress">In Progress</option>
-            <option value="Resolved">Resolved</option>
-            <option value="Closed">Closed</option>
-          </select>
-          <button type="submit" className="btn btn-primary">Search</button>
-          {(filters.status || filters.q) && (
-            <button
-              type="button"
-              className="btn btn-ghost"
-              onClick={() => {
-                setFilters({ status: '', priority_id: '', category_id: '', q: '' })
-                setSearchQuery('')
-              }}
-            >
-              Clear
-            </button>
-          )}
-        </form>
-      </div>
-
-      {/* Tickets List */}
-      <div className="space-y-4">
-        {loading ? (
-          <div className="text-center py-12"><span className="loading loading-spinner loading-lg"></span></div>
-        ) : tickets.length === 0 ? (
-          <div className="text-center py-12 bg-base-100 rounded-lg shadow">
-            <p className="text-gray-500 text-lg">No tickets found</p>
-            <Link to="/tickets/new" className="btn btn-primary mt-4">Create Your First Ticket</Link>
-          </div>
-        ) : (
-          tickets.map(ticket => (
-            <div
-              key={ticket.id}
-              className="card bg-base-100 shadow hover:shadow-lg transition-shadow cursor-pointer"
-              onClick={() => nav(`/tickets/${ticket.id}`)}
-            >
-              <div className="card-body">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="card-title text-lg">#{ticket.id} - {ticket.title}</h3>
-                      {getStatusBadge(ticket.status)}
-                      {getPriorityBadge(ticket.priority)}
+      {/* Services Tab */}
+      {activeTab === 'services' && (isProvider || isAdmin) && (
+        <div className="space-y-4">
+          {loading ? (
+            <div className="text-center py-12"><span className="loading loading-spinner loading-lg"></span></div>
+          ) : services.length === 0 ? (
+            <div className="text-center py-12 bg-base-100 rounded-lg shadow">
+              <p className="text-gray-500 text-lg">No services yet</p>
+              <Link to="/services/new" className="btn btn-primary mt-4">Create Your First Service</Link>
+            </div>
+          ) : (
+            services.map(service => (
+              <div
+                key={service.id}
+                className="card bg-base-100 shadow hover:shadow-lg transition-shadow cursor-pointer"
+                onClick={() => nav(`/services/${service.id}`)}
+              >
+                <div className="card-body">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <h3 className="card-title text-lg">{service.title}</h3>
+                        {getStatusBadge(service.status)}
+                        {service.is_available && <span className="badge badge-success">Available</span>}
+                      </div>
+                      <p className="text-gray-600 line-clamp-2">{service.description}</p>
+                      <div className="flex items-center gap-4 mt-3 text-sm text-gray-500">
+                        <span className="text-lg font-bold text-primary">${service.price} {service.currency}</span>
+                        {service.category && <span>Category: {service.category.name}</span>}
+                        {service.location && <span>📍 {service.location}</span>}
+                      </div>
                     </div>
-                    <p className="text-gray-600 line-clamp-2">{ticket.description}</p>
-                    <div className="flex items-center gap-4 mt-3 text-sm text-gray-500">
-                      <span>Created: {new Date(ticket.created_at).toLocaleDateString()}</span>
-                      {ticket.creator && <span>By: {ticket.creator.name}</span>}
-                      {ticket.category && <span>Category: {ticket.category.name}</span>}
-                      {ticket.ticket_assignments?.[0]?.agent && (
-                        <span className="badge badge-sm">Assigned to: {ticket.ticket_assignments[0].agent.name}</span>
-                      )}
+                    <div className="text-right">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
                     </div>
-                  </div>
-                  <div className="text-right">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
                   </div>
                 </div>
               </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {/* Orders Tab */}
+      {activeTab === 'orders' && (isCustomer || isProvider || isAdmin) && (
+        <div className="space-y-4">
+          {loading ? (
+            <div className="text-center py-12"><span className="loading loading-spinner loading-lg"></span></div>
+          ) : orders.length === 0 ? (
+            <div className="text-center py-12 bg-base-100 rounded-lg shadow">
+              <p className="text-gray-500 text-lg">No orders yet</p>
+              {isCustomer && (
+                <Link to="/services" className="btn btn-primary mt-4">Browse Services</Link>
+              )}
             </div>
-          ))
-        )}
-      </div>
+          ) : (
+            orders.map(order => (
+              <div
+                key={order.id}
+                className="card bg-base-100 shadow hover:shadow-lg transition-shadow cursor-pointer"
+                onClick={() => nav(`/orders/${order.id}`)}
+              >
+                <div className="card-body">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <h3 className="card-title text-lg">Order #{order.id}</h3>
+                        {getStatusBadge(order.status)}
+                      </div>
+                      {order.service && (
+                        <p className="text-gray-600 font-semibold">{order.service.title}</p>
+                      )}
+                      <div className="flex items-center gap-4 mt-3 text-sm text-gray-500">
+                        <span className="text-lg font-bold text-primary">${order.total_price} {order.currency}</span>
+                        {isCustomer && order.provider && (
+                          <span>Provider: {order.provider.name}</span>
+                        )}
+                        {isProvider && order.customer && (
+                          <span>Customer: {order.customer.name}</span>
+                        )}
+                        <span>Created: {new Date(order.created_at).toLocaleDateString()}</span>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {/* Overview Tab */}
+      {activeTab === 'overview' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="card bg-base-100 shadow">
+            <div className="card-body">
+              <h3 className="card-title">Quick Actions</h3>
+              <div className="space-y-2 mt-4">
+                {isProvider && (
+                  <Link to="/services/new" className="btn btn-primary btn-block">Create New Service</Link>
+                )}
+                {isCustomer && (
+                  <Link to="/services" className="btn btn-primary btn-block">Browse Services</Link>
+                )}
+                <Link to="/services" className="btn btn-outline btn-block">View All Services</Link>
+                {(isCustomer || isProvider) && (
+                  <Link to="/orders" className="btn btn-outline btn-block">View All Orders</Link>
+                )}
+                {isAdmin && (
+                  <>
+                    <Link to="/admin/users" className="btn btn-outline btn-block">Manage Users</Link>
+                    <Link to="/admin/categories" className="btn btn-outline btn-block">Manage Categories</Link>
+                    <Link to="/admin/audit" className="btn btn-outline btn-block">View Audit Logs</Link>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="card bg-base-100 shadow">
+            <div className="card-body">
+              <h3 className="card-title">Recent Activity</h3>
+              <div className="space-y-2 mt-4">
+                {stats?.recentOrders && stats.recentOrders.length > 0 ? (
+                  stats.recentOrders.slice(0, 5).map(order => (
+                    <div key={order.id} className="flex items-center justify-between p-2 bg-base-200 rounded">
+                      <span className="text-sm">Order #{order.id}</span>
+                      {getStatusBadge(order.status)}
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-gray-500 text-sm">No recent activity</p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

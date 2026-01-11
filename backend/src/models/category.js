@@ -4,7 +4,8 @@ module.exports = (sequelize) => {
   const Category = sequelize.define('Category', {
     id: { type: DataTypes.SMALLINT, primaryKey: true, autoIncrement: true },
     name: { type: DataTypes.STRING(128), allowNull: false, unique: true },
-    description: { type: DataTypes.TEXT }
+    description: { type: DataTypes.TEXT },
+    icon: { type: DataTypes.STRING(128) }
   }, {
     tableName: 'categories',
     timestamps: false

@@ -6,7 +6,7 @@ export default function AdminUsers() {
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [editingUser, setEditingUser] = useState(null)
-  const [formData, setFormData] = useState({ name: '', email: '', password: '', role: 'user' })
+  const [formData, setFormData] = useState({ name: '', email: '', password: '', role: 'customer' })
 
   useEffect(() => {
     loadUsers()
@@ -25,7 +25,7 @@ export default function AdminUsers() {
 
   const handleCreate = () => {
     setEditingUser(null)
-    setFormData({ name: '', email: '', password: '', role: 'user' })
+    setFormData({ name: '', email: '', password: '', role: 'customer' })
     setShowModal(true)
   }
 
@@ -60,7 +60,7 @@ export default function AdminUsers() {
         await usersAPI.create(formData)
       }
       setShowModal(false)
-      setFormData({ name: '', email: '', password: '', role: 'user' })
+      setFormData({ name: '', email: '', password: '', role: 'customer' })
       loadUsers()
     } catch(err) {
       alert(err.response?.data?.error || 'Failed to save user')
@@ -177,8 +177,8 @@ export default function AdminUsers() {
                   value={formData.password}
                   onChange={e => setFormData({ ...formData, password: e.target.value })}
                   required={!editingUser}
-                  minLength={6}
-                  placeholder={editingUser ? "Enter new password (optional)" : "Minimum 6 characters"}
+                  minLength={8}
+                  placeholder={editingUser ? "Enter new password (optional)" : "Minimum 8 characters"}
                 />
                 <label className="label">
                   <span className="label-text-alt text-gray-500">
@@ -195,8 +195,8 @@ export default function AdminUsers() {
                   value={formData.role}
                   onChange={e => setFormData({ ...formData, role: e.target.value })}
                 >
-                  <option value="user">User</option>
-                  <option value="agent">Agent</option>
+                  <option value="customer">Customer</option>
+                  <option value="provider">Provider</option>
                   <option value="admin">Admin</option>
                 </select>
               </div>

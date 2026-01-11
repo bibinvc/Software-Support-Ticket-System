@@ -1,24 +1,33 @@
-# Software Support Ticket System
+# Sharing Economy Platform
 
-A full-featured, modern support ticket management system built with React, Node.js, Express, and PostgreSQL. This system provides comprehensive ticket management capabilities for IT support teams.
+A secure, modern sharing economy web platform built with React, Node.js, Express, and PostgreSQL. This platform enables service providers and customers to connect, exchange services, and manage orders with comprehensive security controls following Secure SDLC principles.
 
 ## Features
 
 ### Core Functionality
-- **User Management**: Role-based access control (User, Agent, Admin)
-- **Ticket Management**: Create, view, update, and track support tickets
-- **Priority & Categories**: Organize tickets with priorities and categories
-- **Comments & Notes**: Public comments and internal notes for agents
-- **File Attachments**: Upload and download attachments for tickets
-- **Ticket Assignment**: Assign tickets to agents for resolution
-- **Status Tracking**: Track ticket status (Open, In Progress, Resolved, Closed)
-- **Search & Filters**: Search tickets and filter by status, priority, category
-- **Dashboard Statistics**: View ticket statistics and trends
+- **User Management**: Role-based access control (Customer, Provider, Admin)
+- **Service Listings**: Providers can create and manage service listings
+- **Order Workflow**: Complete order lifecycle (Pending → Confirmed → In Progress → Completed)
+- **Multi-Factor Authentication (MFA)**: TOTP-based 2FA for enhanced security
+- **Search & Filters**: Search services by category, price, location
+- **Rating System**: Customers and providers can rate each other after order completion
+- **File Attachments**: Upload images and documents for services and orders
+- **Dashboard Statistics**: Role-based dashboards with relevant statistics
+
+### Security Features
+- **Secure Authentication**: JWT tokens with session management
+- **Input Validation**: Comprehensive validation and sanitization
+- **SQL Injection Protection**: Sequelize ORM with parameterized queries
+- **XSS Protection**: Input sanitization and output encoding
+- **Rate Limiting**: Protection against DoS and brute force attacks
+- **Audit Logging**: Comprehensive logging of all critical actions
+- **Encryption**: MFA secrets encrypted with AES-256-GCM
 
 ### Admin Features
 - **User Management**: Create, edit, activate/deactivate users
-- **Category Management**: Manage ticket categories
-- **Priority Management**: Configure ticket priorities with ranking
+- **Category Management**: Manage service categories
+- **Platform Statistics**: View platform-wide statistics
+- **Audit Logs**: Monitor all platform activities
 
 ### User Experience
 - **Modern UI**: Built with TailwindCSS and DaisyUI
@@ -178,9 +187,9 @@ npm run preview
 
 The system supports three roles:
 
-- **User**: Can create tickets, view their own tickets, and add comments
-- **Agent**: Can view all tickets, assign tickets, update status, add internal notes
-- **Admin**: Full access including user management, category/priority management
+- **Customer**: Can browse services, place orders, track orders, rate providers
+- **Provider**: Can create and manage services, receive orders, update order status, rate customers
+- **Admin**: Full access including user management, category management, audit logs, platform statistics
 
 ## API Endpoints
 

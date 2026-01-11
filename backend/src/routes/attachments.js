@@ -18,12 +18,37 @@ const upload = multer({ storage });
 const router = express.Router();
 
 router.post('/', authenticate, upload.single('file'), async (req,res)=>{
-  const { ticket_id } = req.body;
+  const { service_id, order_id } = req.body;
   if(!req.file) return res.status(400).json({ error: 'file required' });
-  const record = await Attachment.create({ ticket_id, file_key: req.file.filename, filename: req.file.originalname, content_type: req.file.mimetype, size_bytes: req.file.size, uploaded_by: req.user.id });
+  
+  // Validate file type and size
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
+  const maxSize = 10 * 1024 * 1024; // 10MB
+  
+  if (!allowedTypes.includes(req.file.mimetype)) {
+    return res.status(400).json({ error: 'Invalid file type. Allowed: images and PDF' });
+  }
+  
+  if (req.file.size > maxSize) {
+    return res.status(400).json({ error: 'File too large. Maximum size: 10MB' });
+  }
+  
+  if (!service_id && !order_id) {
+    return res.status(400).json({ error: 'service_id or order_id required' });
+  }
+  
+  const record = await Attachment.create({ 
+    service_id: service_id || null, 
+    order_id: order_id || null,
+    file_key: req.file.filename, 
+    filename: req.file.originalname, 
+    content_type: req.file.mimetype, 
+    size_bytes: req.file.size, 
+    uploaded_by: req.user.id 
+  });
   
   // Log attachment upload
-  await createAuditLog('ticket', ticket_id, 'attachment_uploaded', req.user.id, {
+  await createAuditLog(service_id ? 'service' : 'order', service_id || order_id, 'attachment_uploaded', req.user.id, {
     attachment_id: record.id,
     filename: req.file.originalname,
     size_bytes: req.file.size,

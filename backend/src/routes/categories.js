@@ -4,8 +4,8 @@ const { authenticate, requireRole } = require('../middleware/auth');
 
 const router = express.Router();
 
-// Get all categories
-router.get('/', authenticate, async (req, res) => {
+// Get all categories (public)
+router.get('/', async (req, res) => {
   try {
     const categories = await Category.findAll({ order: [['name', 'ASC']] });
     res.json(categories);
@@ -14,8 +14,8 @@ router.get('/', authenticate, async (req, res) => {
   }
 });
 
-// Get category by ID
-router.get('/:id', authenticate, async (req, res) => {
+// Get category by ID (public)
+router.get('/:id', async (req, res) => {
   try {
     const category = await Category.findByPk(req.params.id);
     if (!category) return res.status(404).json({ error: 'Category not found' });
