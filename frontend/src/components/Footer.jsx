@@ -1,13 +1,15 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
 
-export default function Footer(){
+export default function Footer() {
   return (
     <footer className="mt-12 border-t border-gray-100 bg-white">
       <div className="app-container py-10 grid grid-cols-1 md:grid-cols-3 gap-6">
         <div>
           <div className="text-xl font-bold">Support Tickets</div>
-          <div className="text-sm text-gray-600 mt-2">A simple helpdesk to submit and track IT requests. Built for small teams and enterprises.</div>
+          <div className="text-sm text-gray-600 mt-2">
+            A simple helpdesk to submit and track IT requests. Built for small teams and enterprises.
+          </div>
         </div>
 
         <div>
@@ -34,7 +36,9 @@ export default function Footer(){
           </div>
         </div>
       </div>
-      <div className="text-center text-xs text-gray-400 py-4">© {new Date().getFullYear()} Support Tickets — All rights reserved.</div>
+      <div className="text-center text-xs text-gray-400 py-4">
+        (c) {new Date().getFullYear()} Support Tickets - All rights reserved.
+      </div>
     </footer>
   )
 }

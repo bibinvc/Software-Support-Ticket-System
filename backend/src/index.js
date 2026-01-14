@@ -2,11 +2,12 @@ require('dotenv').config();
 const express = require('express');
 const { sequelize } = require('./models');
 const authRoutes = require('./routes/auth');
-const servicesRoutes = require('./routes/services');
-const ordersRoutes = require('./routes/orders');
 const attachmentsRoutes = require('./routes/attachments');
 const usersRoutes = require('./routes/users');
 const categoriesRoutes = require('./routes/categories');
+const prioritiesRoutes = require('./routes/priorities');
+const ticketsRoutes = require('./routes/tickets');
+const commentsRoutes = require('./routes/comments');
 const statisticsRoutes = require('./routes/statistics');
 const auditRoutes = require('./routes/audit');
 const { helmetConfig, corsOptions, apiLimiter } = require('./middleware/security');
@@ -35,27 +36,28 @@ app.use('/uploads', express.static(uploadDir));
 
 // API routes
 app.use('/api/auth', authRoutes);
-app.use('/api/services', servicesRoutes);
-app.use('/api/orders', ordersRoutes);
 app.use('/api/attachments', attachmentsRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/categories', categoriesRoutes);
+app.use('/api/priorities', prioritiesRoutes);
+app.use('/api/tickets', ticketsRoutes);
+app.use('/api/tickets', commentsRoutes);
 app.use('/api/statistics', statisticsRoutes);
 app.use('/api/audit', auditRoutes);
 
 // Root API endpoint
 app.get('/api', apiLimiter, (req, res) => {
   res.json({
-    message: 'Sharing Economy Platform API',
+    message: 'Support Ticket System API',
     version: '2.0.0',
     status: 'running',
     endpoints: {
       auth: '/api/auth',
-      services: '/api/services',
-      orders: '/api/orders',
       attachments: '/api/attachments',
       users: '/api/users',
       categories: '/api/categories',
+      priorities: '/api/priorities',
+      tickets: '/api/tickets',
       statistics: '/api/statistics',
       audit: '/api/audit',
       health: '/api/health'
@@ -78,23 +80,23 @@ async function start(){
   try{
     console.log('Connecting to database...');
     await sequelize.authenticate();
-    console.log('✅ Database connection established');
+    console.log('Database connection established');
     
     console.log('Synchronizing database models...');
     await sequelize.sync({ alter: false }); // Don't alter existing tables
-    console.log('✅ Database models synchronized');
+    console.log('Database models synchronized');
     
     app.listen(PORT, ()=> {
-      console.log(`\n🚀 Server running on port ${PORT}`);
-      console.log(`📡 API available at http://localhost:${PORT}/api`);
-      console.log(`❤️  Health check: http://localhost:${PORT}/api/health\n`);
+      console.log(`\nServer running on port ${PORT}`);
+      console.log(`API available at http://localhost:${PORT}/api`);
+      console.log(`Health check: http://localhost:${PORT}/api/health\n`);
     });
   }catch(err){
-    console.error('\n❌ Failed to start server\n');
+    console.error('\nFailed to start server\n');
     if (err.name === 'SequelizeConnectionRefusedError' || err.code === 'ECONNREFUSED') {
-      console.error('🔴 PostgreSQL Connection Error:');
+      console.error('PostgreSQL Connection Error:');
       console.error('   PostgreSQL is not running or not accessible.\n');
-      console.error('📋 Quick Fix:');
+      console.error('Quick Fix:');
       console.error('   1. Start PostgreSQL service (see POSTGRES_SETUP_WINDOWS.md)');
       console.error('   2. Check DATABASE_URL in .env file');
       console.error('   3. Run: npm run check-postgres\n');

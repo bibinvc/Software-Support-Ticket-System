@@ -2,7 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const { Attachment } = require('../models');
+const { Attachment, Ticket, TicketAssignment } = require('../models');
 const { authenticate } = require('../middleware/auth');
 const { createAuditLog } = require('../middleware/audit');
 
@@ -18,7 +18,7 @@ const upload = multer({ storage });
 const router = express.Router();
 
 router.post('/', authenticate, upload.single('file'), async (req,res)=>{
-  const { service_id, order_id } = req.body;
+  const { ticket_id } = req.body;
   if(!req.file) return res.status(400).json({ error: 'file required' });
   
   // Validate file type and size
@@ -33,13 +33,30 @@ router.post('/', authenticate, upload.single('file'), async (req,res)=>{
     return res.status(400).json({ error: 'File too large. Maximum size: 10MB' });
   }
   
-  if (!service_id && !order_id) {
-    return res.status(400).json({ error: 'service_id or order_id required' });
+  if (!ticket_id) {
+    return res.status(400).json({ error: 'ticket_id required' });
+  }
+
+  const ticket = await Ticket.findByPk(ticket_id);
+  if (!ticket) {
+    return res.status(404).json({ error: 'Ticket not found' });
+  }
+
+  if (req.user.role === 'client' && ticket.created_by !== req.user.id) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+
+  if (req.user.role === 'agent') {
+    const assignment = await TicketAssignment.findOne({
+      where: { ticket_id, agent_id: req.user.id }
+    });
+    if (!assignment) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
   }
   
   const record = await Attachment.create({ 
-    service_id: service_id || null, 
-    order_id: order_id || null,
+    ticket_id: ticket_id || null,
     file_key: req.file.filename, 
     filename: req.file.originalname, 
     content_type: req.file.mimetype, 
@@ -47,8 +64,11 @@ router.post('/', authenticate, upload.single('file'), async (req,res)=>{
     uploaded_by: req.user.id 
   });
   
+  const entityType = 'ticket';
+  const entityId = ticket_id;
+
   // Log attachment upload
-  await createAuditLog(service_id ? 'service' : 'order', service_id || order_id, 'attachment_uploaded', req.user.id, {
+  await createAuditLog(entityType, entityId, 'attachment_uploaded', req.user.id, {
     attachment_id: record.id,
     filename: req.file.originalname,
     size_bytes: req.file.size,
@@ -63,6 +83,24 @@ router.get('/:id/download', authenticate, async (req,res)=>{
     const id = req.params.id;
     const rec = await Attachment.findByPk(id);
     if(!rec) return res.status(404).json({ error: 'Not found' });
+
+    if (rec.ticket_id) {
+      const ticket = await Ticket.findByPk(rec.ticket_id);
+      if (!ticket) return res.status(404).json({ error: 'Ticket not found' });
+
+      if (req.user.role === 'client' && ticket.created_by !== req.user.id) {
+        return res.status(403).json({ error: 'Forbidden' });
+      }
+
+      if (req.user.role === 'agent') {
+        const assignment = await TicketAssignment.findOne({
+          where: { ticket_id: rec.ticket_id, agent_id: req.user.id }
+        });
+        if (!assignment) {
+          return res.status(403).json({ error: 'Forbidden' });
+        }
+      }
+    }
     
     const file = path.join(uploadDir, rec.file_key);
     if(!fs.existsSync(file)) {

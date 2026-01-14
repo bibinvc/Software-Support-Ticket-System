@@ -13,11 +13,11 @@ const router = express.Router();
 // Register new user
 router.post('/register', authLimiter, validate(registerRules), async (req, res) => {
   try {
-    const { name, email, password, role = 'customer' } = req.body;
+    const { name, email, password, role = 'client' } = req.body;
     
-    // Validate role
-    if (!['customer', 'provider'].includes(role)) {
-      return res.status(400).json({ error: 'Invalid role. Must be customer or provider' });
+    // Validate role (public registration is client only)
+    if (role !== 'client') {
+      return res.status(400).json({ error: 'Invalid role. Must be client' });
     }
     
     // Check if user already exists

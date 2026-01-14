@@ -4,14 +4,13 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import Dashboard from './pages/Dashboard'
-import Services from './pages/Services'
-import ServiceDetail from './pages/ServiceDetail'
-import NewService from './pages/NewService'
-import Orders from './pages/Orders'
-import OrderDetail from './pages/OrderDetail'
+import Tickets from './pages/Tickets'
+import NewTicket from './pages/NewTicket'
+import Ticket from './pages/Ticket'
 import Home from './pages/Home'
 import AdminUsers from './pages/AdminUsers'
 import AdminCategories from './pages/AdminCategories'
+import AdminPriorities from './pages/AdminPriorities'
 import AdminAuditLogs from './pages/AdminAuditLogs'
 import ProtectedRoute from './components/ProtectedRoute'
 import './index.css'
@@ -35,36 +34,27 @@ const App = () => (
             </ProtectedRoute>
           } 
         />
-        <Route path="/services" element={<Services />} />
         <Route 
-          path="/services/new" 
+          path="/tickets" 
           element={
             <ProtectedRoute>
-              <NewService />
+              <Tickets />
             </ProtectedRoute>
           } 
         />
         <Route 
-          path="/services/:id" 
+          path="/tickets/new" 
           element={
             <ProtectedRoute>
-              <ServiceDetail />
+              <NewTicket />
             </ProtectedRoute>
           } 
         />
         <Route 
-          path="/orders" 
+          path="/tickets/:id" 
           element={
             <ProtectedRoute>
-              <Orders />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/orders/:id" 
-          element={
-            <ProtectedRoute>
-              <OrderDetail />
+              <Ticket />
             </ProtectedRoute>
           } 
         />
@@ -81,6 +71,14 @@ const App = () => (
           element={
             <ProtectedRoute requireAdmin>
               <AdminCategories />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/admin/priorities" 
+          element={
+            <ProtectedRoute requireAdmin>
+              <AdminPriorities />
             </ProtectedRoute>
           } 
         />

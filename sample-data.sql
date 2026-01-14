@@ -92,7 +92,7 @@ VALUES
         1,  -- ticket_id (first ticket)
         1,  -- user_id (your user id)
         'I have tried clearing my browser cache and using a different browser, but the issue persists.',
-        false  -- visible to customer
+        false  -- visible to client
     ),
     (
         5,  -- ticket_id (Error 500 ticket)
@@ -102,29 +102,7 @@ VALUES
     );
 
 -- ============================================
--- 4. CREATE SLA POLICIES (Optional)
--- ============================================
-INSERT INTO sla_policies (name, time_to_first_response, time_to_resolution)
-VALUES 
-    (
-        'Standard SLA',
-        '4 hours',    -- respond within 4 hours
-        '24 hours'    -- resolve within 24 hours
-    ),
-    (
-        'Premium SLA',
-        '1 hour',     -- respond within 1 hour
-        '8 hours'     -- resolve within 8 hours
-    ),
-    (
-        'Critical SLA',
-        '30 minutes', -- respond within 30 minutes
-        '4 hours'     -- resolve within 4 hours
-    )
-ON CONFLICT (name) DO NOTHING;
-
--- ============================================
--- 5. VIEW YOUR DATA
+-- 4. VIEW YOUR DATA
 -- ============================================
 -- View all tickets
 SELECT 

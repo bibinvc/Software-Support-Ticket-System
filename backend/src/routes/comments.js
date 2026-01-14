@@ -1,6 +1,6 @@
 const express = require('express');
-const { TicketComment } = require('../models');
-const { authenticate, requireRole } = require('../middleware/auth');
+const { TicketComment, TicketAssignment } = require('../models');
+const { authenticate } = require('../middleware/auth');
 const { createAuditLog } = require('../middleware/audit');
 
 const router = express.Router();
@@ -16,13 +16,22 @@ router.post('/:id/comments', authenticate, async (req,res)=>{
     const ticket = await require('../models').Ticket.findByPk(ticket_id);
     if(!ticket) return res.status(404).json({ error: 'Ticket not found' });
     
-    if(req.user.role === 'user' && ticket.created_by !== req.user.id) {
+    if(req.user.role === 'client' && ticket.created_by !== req.user.id) {
       return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    if (req.user.role === 'agent') {
+      const assignment = await TicketAssignment.findOne({
+        where: { ticket_id, agent_id: req.user.id }
+      });
+      if (!assignment) {
+        return res.status(403).json({ error: 'Forbidden' });
+      }
     }
     
     // Users cannot create internal notes
     let internalFlag = false;
-    if(req.user.role !== 'user' && is_internal) internalFlag = true;
+    if(req.user.role !== 'client' && is_internal) internalFlag = true;
     
     const comment = await TicketComment.create({ 
       ticket_id, 

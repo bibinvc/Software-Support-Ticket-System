@@ -9,7 +9,7 @@ const generateSecret = () => {
 };
 
 // Generate QR code for MFA setup
-const generateQRCode = async (email, secret, serviceName = 'Sharing Economy Platform') => {
+const generateQRCode = async (email, secret, serviceName = 'Support Ticket System') => {
   const otpauth = authenticator.keyuri(email, serviceName, secret);
   try {
     const qrCodeUrl = await QRCode.toDataURL(otpauth);

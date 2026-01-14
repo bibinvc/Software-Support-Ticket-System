@@ -6,6 +6,7 @@ module.exports = (sequelize) => {
     title: { type: DataTypes.STRING, allowNull: false },
     description: { type: DataTypes.TEXT, allowNull: false },
     status: { type: DataTypes.STRING, allowNull: false, defaultValue: 'Open' },
+    created_by: { type: DataTypes.BIGINT, allowNull: false },
     category_id: { type: DataTypes.SMALLINT },
     priority_id: { type: DataTypes.SMALLINT }
   }, {

@@ -6,7 +6,7 @@ export default function AdminUsers() {
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [editingUser, setEditingUser] = useState(null)
-  const [formData, setFormData] = useState({ name: '', email: '', password: '', role: 'customer' })
+  const [formData, setFormData] = useState({ name: '', email: '', password: '', role: 'client' })
 
   useEffect(() => {
     loadUsers()
@@ -16,7 +16,7 @@ export default function AdminUsers() {
     try {
       const res = await usersAPI.getAll()
       setUsers(res.data)
-    } catch(err) {
+    } catch (err) {
       console.error('Failed to load users:', err)
     } finally {
       setLoading(false)
@@ -25,7 +25,7 @@ export default function AdminUsers() {
 
   const handleCreate = () => {
     setEditingUser(null)
-    setFormData({ name: '', email: '', password: '', role: 'customer' })
+    setFormData({ name: '', email: '', password: '', role: 'client' })
     setShowModal(true)
   }
 
@@ -39,30 +39,25 @@ export default function AdminUsers() {
     e.preventDefault()
     try {
       if (editingUser) {
-        // When editing, only send password if it was changed (not empty)
         const updateData = { ...formData }
         const hasPassword = updateData.password && updateData.password.trim() !== ''
-        
-        // Remove password from regular update (handle separately)
+
         delete updateData.password
-        
-        // Update user info (name, email, role, is_active)
+
         if (Object.keys(updateData).length > 0) {
           await usersAPI.update(editingUser.id, updateData)
         }
-        
-        // Update password separately if provided
+
         if (hasPassword) {
           await usersAPI.updatePassword(editingUser.id, formData.password)
         }
       } else {
-        // Creating new user - password is required
         await usersAPI.create(formData)
       }
       setShowModal(false)
-      setFormData({ name: '', email: '', password: '', role: 'customer' })
+      setFormData({ name: '', email: '', password: '', role: 'client' })
       loadUsers()
-    } catch(err) {
+    } catch (err) {
       alert(err.response?.data?.error || 'Failed to save user')
     }
   }
@@ -71,7 +66,7 @@ export default function AdminUsers() {
     try {
       await usersAPI.update(user.id, { is_active: !user.is_active })
       loadUsers()
-    } catch(err) {
+    } catch (err) {
       alert(err.response?.data?.error || 'Failed to update user')
     }
   }
@@ -178,11 +173,11 @@ export default function AdminUsers() {
                   onChange={e => setFormData({ ...formData, password: e.target.value })}
                   required={!editingUser}
                   minLength={8}
-                  placeholder={editingUser ? "Enter new password (optional)" : "Minimum 8 characters"}
+                  placeholder={editingUser ? 'Enter new password (optional)' : 'Minimum 8 characters'}
                 />
                 <label className="label">
                   <span className="label-text-alt text-gray-500">
-                    🔒 Passwords are encrypted and never visible to anyone, including admins
+                    Note: Passwords are encrypted and never visible to anyone, including admins.
                   </span>
                 </label>
               </div>
@@ -195,8 +190,8 @@ export default function AdminUsers() {
                   value={formData.role}
                   onChange={e => setFormData({ ...formData, role: e.target.value })}
                 >
-                  <option value="customer">Customer</option>
-                  <option value="provider">Provider</option>
+                  <option value="client">Client</option>
+                  <option value="agent">Agent</option>
                   <option value="admin">Admin</option>
                 </select>
               </div>
@@ -215,4 +210,3 @@ export default function AdminUsers() {
     </div>
   )
 }
-

@@ -7,7 +7,6 @@ export default function Register(){
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [role, setRole] = useState('customer')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const nav = useNavigate()
@@ -28,7 +27,7 @@ export default function Register(){
 
     setLoading(true)
     try {
-      await authAPI.register(name, email, password, role)
+      await authAPI.register(name, email, password)
       nav('/login', { state: { message: 'Account created successfully! Please sign in.' } })
     } catch(err) {
       if (err.code === 'ERR_NETWORK' || err.message === 'Network Error') {
@@ -45,7 +44,7 @@ export default function Register(){
     <div className="min-h-[60vh] flex items-center justify-center">
       <div className="max-w-md w-full bg-base-100 p-8 rounded-lg shadow-lg">
         <h2 className="text-3xl font-bold mb-2">Create Account</h2>
-        <p className="text-gray-500 mb-6">Sign up to join our sharing economy platform.</p>
+        <p className="text-gray-500 mb-6">Create a client account to submit support tickets.</p>
         
         {error && (
           <div className="alert alert-error mb-4">
@@ -83,21 +82,6 @@ export default function Register(){
               onChange={e => setEmail(e.target.value)}
               required
             />
-          </div>
-
-          <div className="form-control">
-            <label className="label">
-              <span className="label-text">Account Type</span>
-            </label>
-            <select 
-              className="select select-bordered w-full" 
-              value={role} 
-              onChange={e => setRole(e.target.value)}
-              required
-            >
-              <option value="customer">Customer - Buy Services</option>
-              <option value="provider">Provider - Sell Services</option>
-            </select>
           </div>
 
           <div className="form-control">

@@ -1,9 +1,7 @@
 import React, { useEffect, useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
 import { auditAPI } from '../services/api'
 
 export default function AdminAuditLogs() {
-  const { ticketId } = useParams()
   const [logs, setLogs] = useState([])
   const [loading, setLoading] = useState(true)
   const [filters, setFilters] = useState({
@@ -25,7 +23,7 @@ export default function AdminAuditLogs() {
       if (filters.entity_id) params.entity_id = filters.entity_id
       if (filters.action) params.action = filters.action
       if (filters.user_id) params.user_id = filters.user_id
-      
+
       const res = await auditAPI.getAll(params)
       setLogs(res.data.logs || res.data || [])
     } catch (err) {
@@ -37,18 +35,18 @@ export default function AdminAuditLogs() {
 
   const getActionBadge = (action) => {
     const colors = {
-      'created': 'badge-success',
-      'updated': 'badge-info',
-      'assigned': 'badge-warning',
-      'deleted': 'badge-error',
-      'commented': 'badge-ghost'
+      created: 'badge-success',
+      updated: 'badge-info',
+      assigned: 'badge-warning',
+      deleted: 'badge-error',
+      commented: 'badge-ghost'
     }
     return <span className={`badge ${colors[action] || 'badge-ghost'}`}>{action}</span>
   }
 
   const formatChanges = (payload) => {
     if (!payload || !payload.changes) return null
-    
+
     const changes = payload.changes
     return Object.keys(changes).map(key => {
       const change = changes[key]
@@ -56,7 +54,7 @@ export default function AdminAuditLogs() {
         <div key={key} className="text-sm">
           <span className="font-semibold">{key}:</span>{' '}
           <span className="text-error">{change.from !== null ? String(change.from) : 'null'}</span>
-          {' → '}
+          {' -> '}
           <span className="text-success">{change.to !== null ? String(change.to) : 'null'}</span>
         </div>
       )
@@ -73,7 +71,7 @@ export default function AdminAuditLogs() {
         <div>
           <h2 className="text-3xl font-bold">Audit Logs</h2>
           <p className="text-gray-500 mt-1">
-            Complete activity history of all platform changes
+            Complete activity history of all ticketing changes
           </p>
         </div>
       </div>
@@ -86,41 +84,41 @@ export default function AdminAuditLogs() {
             onChange={e => setFilters({ ...filters, entity_type: e.target.value })}
           >
             <option value="">All Types</option>
-            <option value="service">Service</option>
-            <option value="order">Order</option>
+            <option value="ticket">Ticket</option>
             <option value="user">User</option>
             <option value="category">Category</option>
+            <option value="priority">Priority</option>
           </select>
-            <input
-              type="number"
-              className="input input-bordered"
-              placeholder="Entity ID"
-              value={filters.entity_id}
-              onChange={e => setFilters({ ...filters, entity_id: e.target.value })}
-            />
-            <select
-              className="select select-bordered"
-              value={filters.action}
-              onChange={e => setFilters({ ...filters, action: e.target.value })}
-            >
-              <option value="">All Actions</option>
-              <option value="created">Created</option>
-              <option value="updated">Updated</option>
-              <option value="status_updated">Status Updated</option>
-              <option value="deleted">Deleted</option>
-              <option value="registered">Registered</option>
-              <option value="login_success">Login Success</option>
-              <option value="login_failed">Login Failed</option>
-              <option value="mfa_enabled">MFA Enabled</option>
-              <option value="mfa_disabled">MFA Disabled</option>
-            </select>
-            <input
-              type="number"
-              className="input input-bordered"
-              placeholder="User ID"
-              value={filters.user_id}
-              onChange={e => setFilters({ ...filters, user_id: e.target.value })}
-            />
+          <input
+            type="number"
+            className="input input-bordered"
+            placeholder="Entity ID"
+            value={filters.entity_id}
+            onChange={e => setFilters({ ...filters, entity_id: e.target.value })}
+          />
+          <select
+            className="select select-bordered"
+            value={filters.action}
+            onChange={e => setFilters({ ...filters, action: e.target.value })}
+          >
+            <option value="">All Actions</option>
+            <option value="created">Created</option>
+            <option value="updated">Updated</option>
+            <option value="assigned">Assigned</option>
+            <option value="commented">Commented</option>
+            <option value="registered">Registered</option>
+            <option value="login_success">Login Success</option>
+            <option value="login_failed">Login Failed</option>
+            <option value="mfa_enabled">MFA Enabled</option>
+            <option value="mfa_disabled">MFA Disabled</option>
+          </select>
+          <input
+            type="number"
+            className="input input-bordered"
+            placeholder="User ID"
+            value={filters.user_id}
+            onChange={e => setFilters({ ...filters, user_id: e.target.value })}
+          />
         </div>
       </div>
 
@@ -152,17 +150,6 @@ export default function AdminAuditLogs() {
                         {formatChanges(log.payload)}
                       </div>
                     )}
-                    {log.action === 'status_updated' && log.payload && (
-                      <div className="mt-2 text-sm">
-                        <span className="font-semibold">Status Change:</span>{' '}
-                        <span className="text-error">{log.payload.old_status || 'N/A'}</span>
-                        {' → '}
-                        <span className="text-success">{log.payload.new_status || 'N/A'}</span>
-                        {log.payload.cancellation_reason && (
-                          <div className="mt-1 text-gray-600">Reason: {log.payload.cancellation_reason}</div>
-                        )}
-                      </div>
-                    )}
                     {log.action === 'attachment_uploaded' && log.payload && (
                       <div className="mt-2 text-sm">
                         <span className="font-semibold">File:</span> {log.payload.filename}
@@ -171,7 +158,7 @@ export default function AdminAuditLogs() {
                         </span>
                       </div>
                     )}
-                    {log.payload && !log.payload.changes && !log.payload.old_status && log.action !== 'attachment_uploaded' && (
+                    {log.payload && !log.payload.changes && log.action !== 'attachment_uploaded' && (
                       <div className="mt-2 text-sm text-gray-600">
                         {JSON.stringify(log.payload, null, 2)}
                       </div>
@@ -189,4 +176,3 @@ export default function AdminAuditLogs() {
     </div>
   )
 }
-

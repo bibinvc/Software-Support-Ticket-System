@@ -1,8 +1,9 @@
 const express = require('express');
-const { User, Service, Order } = require('../models');
+const { User } = require('../models');
 const { authenticate, requireRole } = require('../middleware/auth');
 const { apiLimiter } = require('../middleware/security');
 const bcrypt = require('bcrypt');
+const { Op } = require('sequelize');
 
 const router = express.Router();
 
@@ -31,6 +32,20 @@ router.get('/me', authenticate, async (req, res) => {
   }
 });
 
+// Get agents list (admin assignments)
+router.get('/agents/list', authenticate, requireRole(['admin']), apiLimiter, async (req, res) => {
+  try {
+    const agents = await User.findAll({
+      where: { role: { [Op.in]: ['admin', 'agent'] }, is_active: true },
+      attributes: ['id', 'name', 'email'],
+      order: [['name', 'ASC']]
+    });
+    res.json(agents);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Get user by ID (admin or self)
 router.get('/:id', authenticate, apiLimiter, async (req, res) => {
   try {
@@ -40,16 +55,7 @@ router.get('/:id', authenticate, apiLimiter, async (req, res) => {
     }
     
     const user = await User.findByPk(req.params.id, {
-      attributes: { exclude: ['password_hash', 'mfa_secret'] },
-      include: [
-        {
-          model: Service,
-          as: 'services',
-          limit: 5,
-          order: [['created_at', 'DESC']],
-          attributes: ['id', 'title', 'price', 'status']
-        }
-      ]
+      attributes: { exclude: ['password_hash', 'mfa_secret'] }
     });
     if (!user) return res.status(404).json({ error: 'User not found' });
     res.json(user);
@@ -68,7 +74,7 @@ router.post('/', authenticate, requireRole(['admin']), apiLimiter, async (req, r
     if (password.length < 8) {
       return res.status(400).json({ error: 'Password must be at least 8 characters' });
     }
-    if (!['customer', 'provider', 'admin'].includes(role)) {
+    if (!['client', 'agent', 'admin'].includes(role)) {
       return res.status(400).json({ error: 'Invalid role' });
     }
     // Check if user already exists
@@ -81,7 +87,7 @@ router.post('/', authenticate, requireRole(['admin']), apiLimiter, async (req, r
       name: name.trim(), 
       email: email.trim().toLowerCase(), 
       password_hash: password,  // Plain password - beforeCreate hook will hash it
-      role: role || 'customer' 
+      role: role || 'client' 
     });
     res.status(201).json({ id: user.id, name: user.name, email: user.email, role: user.role });
   } catch (err) {
@@ -101,7 +107,7 @@ router.patch('/:id', authenticate, apiLimiter, async (req, res) => {
     }
 
     // NEVER update password through this route - use /:id/password endpoint instead
-    const { name, email, role, is_active, password, phone, address, bio } = req.body;
+    const { name, email, role, is_active, password } = req.body;
     
     // Security: Ignore password if sent here (must use password endpoint)
     if (password) {
@@ -110,10 +116,7 @@ router.patch('/:id', authenticate, apiLimiter, async (req, res) => {
     
     if (name) user.name = name;
     if (email) user.email = email;
-    if (phone !== undefined) user.phone = phone;
-    if (address !== undefined) user.address = address;
-    if (bio !== undefined) user.bio = bio;
-    if (role && req.user.role === 'admin' && ['customer', 'provider', 'admin'].includes(role)) {
+    if (role && req.user.role === 'admin' && ['client', 'agent', 'admin'].includes(role)) {
       user.role = role;
     }
     if (is_active !== undefined && req.user.role === 'admin') user.is_active = is_active;
@@ -152,20 +155,6 @@ router.patch('/:id/password', authenticate, async (req, res) => {
     res.json({ message: 'Password updated' });
   } catch (err) {
     res.status(400).json({ error: err.message });
-  }
-});
-
-// Get providers list (for service listings)
-router.get('/providers/list', apiLimiter, async (req, res) => {
-  try {
-    const providers = await User.findAll({
-      where: { role: 'provider', is_active: true },
-      attributes: ['id', 'name', 'email', 'rating', 'bio'],
-      order: [['rating', 'DESC'], ['name', 'ASC']]
-    });
-    res.json(providers);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
   }
 });
 

@@ -13,6 +13,7 @@ export default function Ticket(){
   const [error, setError] = useState('')
   const [file, setFile] = useState(null)
   const [uploading, setUploading] = useState(false)
+  const [imageUrls, setImageUrls] = useState({})
   
   // Edit mode
   const [editing, setEditing] = useState(false)
@@ -30,15 +31,51 @@ export default function Ticket(){
   const user = JSON.parse(localStorage.getItem('user') || '{}')
   const isAdmin = user.role === 'admin'
   const isAgent = user.role === 'agent' || isAdmin
+  const canAssign = isAdmin
   const canEdit = isAgent || (ticket && ticket.created_by === user.id)
 
   useEffect(() => {
     loadTicket()
-    if (isAgent) {
-      loadOptions()
-    }
+    loadOptions()
     loadAuditLogs()
   }, [id])
+
+  useEffect(() => {
+    let isActive = true
+    const urlsToRevoke = []
+
+    const loadImages = async () => {
+      if (!ticket?.attachments?.length) {
+        setImageUrls({})
+        return
+      }
+
+      const nextUrls = {}
+      const imageAttachments = ticket.attachments.filter(att => att.content_type?.startsWith('image/'))
+
+      await Promise.all(imageAttachments.map(async (att) => {
+        try {
+          const res = await attachmentsAPI.download(att.id)
+          const url = window.URL.createObjectURL(new Blob([res.data]))
+          nextUrls[att.id] = url
+          urlsToRevoke.push(url)
+        } catch (err) {
+          console.error('Failed to load image attachment:', err)
+        }
+      }))
+
+      if (isActive) {
+        setImageUrls(nextUrls)
+      }
+    }
+
+    loadImages()
+
+    return () => {
+      isActive = false
+      urlsToRevoke.forEach((url) => window.URL.revokeObjectURL(url))
+    }
+  }, [ticket?.attachments])
   
   const loadAuditLogs = async () => {
     try {
@@ -69,14 +106,14 @@ export default function Ticket(){
 
   const loadOptions = async () => {
     try {
-      const [catsRes, priRes, agentsRes] = await Promise.all([
-        categoriesAPI.getAll(),
-        prioritiesAPI.getAll(),
-        usersAPI.getAgents()
-      ])
+      const requests = [categoriesAPI.getAll(), prioritiesAPI.getAll()]
+      if (canAssign) {
+        requests.push(usersAPI.getAgents())
+      }
+      const [catsRes, priRes, agentsRes] = await Promise.all(requests)
       setCategories(catsRes.data)
       setPriorities(priRes.data)
-      setAgents(agentsRes.data)
+      setAgents(agentsRes ? agentsRes.data : [])
     } catch(err) {
       console.error('Failed to load options:', err)
     }
@@ -102,7 +139,7 @@ export default function Ticket(){
     if (!file) return
     setUploading(true)
     try {
-      await attachmentsAPI.upload(id, file)
+      await attachmentsAPI.upload(file, { ticketId: id })
       setFile(null)
       await loadTicket()
       await loadAuditLogs() // Reload audit logs after upload
@@ -124,7 +161,7 @@ export default function Ticket(){
         category_id: editCategoryId || null
       })
       
-      if (isAgent && editAgentId !== (ticket.ticket_assignments?.[0]?.agent_id || '')) {
+      if (canAssign && editAgentId !== (ticket.ticket_assignments?.[0]?.agent_id || '')) {
         await ticketsAPI.assign(id, editAgentId || null)
       }
       
@@ -259,7 +296,7 @@ export default function Ticket(){
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
               </select>
-              {isAgent && (
+              {canAssign && (
                 <select
                   className="select select-bordered"
                   value={editAgentId}
@@ -312,7 +349,7 @@ export default function Ticket(){
           <div className="space-y-4">
             {ticket.attachments.map(att => {
               const isImage = att.content_type && att.content_type.startsWith('image/');
-              const imageUrl = isImage ? `http://localhost:4000/api/attachments/${att.id}/download` : null;
+              const imageUrl = isImage ? imageUrls[att.id] : null;
               
               return (
                 <div key={att.id} className="p-4 bg-base-200 rounded-lg">
@@ -320,8 +357,8 @@ export default function Ticket(){
                     <div className="flex-1">
                       <p className="font-medium">{att.filename}</p>
                       <p className="text-sm text-gray-500">
-                        {(att.size_bytes / 1024).toFixed(2)} KB • {new Date(att.created_at).toLocaleDateString()}
-                        {att.uploader && ` • Uploaded by: ${att.uploader.name}`}
+                        {(att.size_bytes / 1024).toFixed(2)} KB - {new Date(att.created_at).toLocaleDateString()}
+                        {att.uploader && ` - Uploaded by: ${att.uploader.name}`}
                       </p>
                     </div>
                     <button
@@ -471,7 +508,7 @@ export default function Ticket(){
                       const change = log.payload.changes[key]
                       return (
                         <div key={key}>
-                          {key}: <span className="text-error">{String(change.from || 'null')}</span> → <span className="text-success">{String(change.to || 'null')}</span>
+                          {key}: <span className="text-error">{String(change.from || 'null')}</span> -> <span className="text-success">{String(change.to || 'null')}</span>
                         </div>
                       )
                     })}

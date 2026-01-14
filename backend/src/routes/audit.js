@@ -1,5 +1,5 @@
 const express = require('express');
-const { AuditLog, User, Ticket } = require('../models');
+const { AuditLog, User, Ticket, TicketAssignment } = require('../models');
 const { authenticate, requireRole } = require('../middleware/auth');
 const { Op } = require('sequelize');
 
@@ -43,9 +43,19 @@ router.get('/ticket/:id', authenticate, async (req, res) => {
     const ticket = await Ticket.findByPk(ticketId);
     if (!ticket) return res.status(404).json({ error: 'Ticket not found' });
     
-    // Users can only see logs for their own tickets
-    if (req.user.role === 'user' && ticket.created_by !== req.user.id) {
+    // Clients can only see logs for their own tickets
+    if (req.user.role === 'client' && ticket.created_by !== req.user.id) {
       return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    // Agents can only see logs for tickets assigned to them
+    if (req.user.role === 'agent') {
+      const assignment = await TicketAssignment.findOne({
+        where: { ticket_id: ticketId, agent_id: req.user.id }
+      });
+      if (!assignment) {
+        return res.status(403).json({ error: 'Forbidden' });
+      }
     }
     
     const logs = await AuditLog.findAll({

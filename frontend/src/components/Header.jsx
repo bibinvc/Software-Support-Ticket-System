@@ -5,7 +5,6 @@ export default function Header(){
   const token = typeof window !== 'undefined' && localStorage.getItem('token')
   const user = token ? JSON.parse(localStorage.getItem('user') || '{}') : null
   const isAdmin = user?.role === 'admin'
-  const isAgent = user?.role === 'agent' || isAdmin
   const navigate = useNavigate()
 
   const handleLogout = () => {
@@ -23,8 +22,8 @@ export default function Header(){
               ST
             </div>
             <div>
-              <div className="text-lg font-semibold">Support Tickets</div>
-              <div className="text-xs text-white/70">IT Helpdesk System</div>
+            <div className="text-lg font-semibold">Support Desk</div>
+            <div className="text-xs text-white/70">Ticketing System</div>
             </div>
           </Link>
         </div>
@@ -38,9 +37,14 @@ export default function Header(){
               <Link className="text-sm font-medium hover:text-white/80 transition-colors" to="/dashboard">
                 Dashboard
               </Link>
-              <Link className="text-sm font-medium hover:text-white/80 transition-colors" to="/tickets/new">
-                New Ticket
+              <Link className="text-sm font-medium hover:text-white/80 transition-colors" to="/tickets">
+                Tickets
               </Link>
+              {user?.role === 'client' && (
+                <Link className="text-sm font-medium hover:text-white/80 transition-colors" to="/tickets/new">
+                  New Ticket
+                </Link>
+              )}
               {isAdmin && (
                 <div className="dropdown dropdown-end">
                   <label tabIndex={0} className="text-sm font-medium hover:text-white/80 transition-colors cursor-pointer">

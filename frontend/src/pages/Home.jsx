@@ -1,22 +1,21 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
 
-export default function Home(){
+export default function Home() {
   const token = typeof window !== 'undefined' && localStorage.getItem('token')
   const user = token ? JSON.parse(localStorage.getItem('user') || '{}') : null
 
   return (
     <div className="space-y-12">
-      {/* Hero Section */}
       <div className="hero bg-gradient-to-r from-teal-50 to-cyan-50 rounded-lg p-12">
         <div className="hero-content text-center">
           <div className="max-w-2xl">
             <h1 className="text-5xl font-bold mb-6 bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text text-transparent">
-              Sharing Economy Platform
+              Software Support Ticketing
             </h1>
             <p className="text-xl text-gray-600 mb-8">
-              Connect with service providers and customers. Buy and sell services, manage orders, 
-              and build your business on our secure, modern platform.
+              Submit issues, track progress, and get resolutions fast. Admins assign tickets
+              to agents, and every update is tracked with full audit history.
             </p>
             <div className="flex gap-4 justify-center">
               {token ? (
@@ -24,14 +23,14 @@ export default function Home(){
                   <Link to="/dashboard" className="btn btn-primary btn-lg">
                     Go to Dashboard
                   </Link>
-                  <Link to="/services" className="btn btn-outline btn-lg">
-                    Browse Services
+                  <Link to="/tickets" className="btn btn-outline btn-lg">
+                    View Tickets
                   </Link>
                 </>
               ) : (
                 <>
                   <Link to="/register" className="btn btn-primary btn-lg">
-                    Get Started
+                    Create Client Account
                   </Link>
                   <Link to="/login" className="btn btn-outline btn-lg">
                     Sign In
@@ -43,69 +42,67 @@ export default function Home(){
         </div>
       </div>
 
-      {/* Features Section */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="card bg-base-100 shadow-lg">
           <div className="card-body">
-            <div className="text-4xl mb-4">🛍️</div>
-            <h3 className="card-title">Service Marketplace</h3>
+            <div className="text-sm text-gray-400 mb-2">01</div>
+            <h3 className="card-title">Submit Issues</h3>
             <p className="text-gray-600">
-              Browse and discover services from verified providers. Find exactly what you need, when you need it.
+              Clients create tickets with categories, priorities, and attachments for clarity.
             </p>
           </div>
         </div>
 
         <div className="card bg-base-100 shadow-lg">
           <div className="card-body">
-            <div className="text-4xl mb-4">💼</div>
-            <h3 className="card-title">Become a Provider</h3>
+            <div className="text-sm text-gray-400 mb-2">02</div>
+            <h3 className="card-title">Admin Assignment</h3>
             <p className="text-gray-600">
-              List your services, manage orders, and grow your business. Connect with customers easily.
+              Admins assign tickets to agents and track ownership from one place.
             </p>
           </div>
         </div>
 
         <div className="card bg-base-100 shadow-lg">
           <div className="card-body">
-            <div className="text-4xl mb-4">📦</div>
-            <h3 className="card-title">Order Management</h3>
+            <div className="text-sm text-gray-400 mb-2">03</div>
+            <h3 className="card-title">Resolution Workflow</h3>
             <p className="text-gray-600">
-              Track your orders from placement to completion. Real-time updates and secure transactions.
+              Agents update status, add internal notes, and resolve issues with a full trail.
             </p>
           </div>
         </div>
       </div>
 
-      {/* Additional Features */}
       <div className="bg-base-100 p-8 rounded-lg shadow">
         <h2 className="text-3xl font-bold mb-6 text-center">Key Features</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="flex items-start gap-4">
-            <div className="text-2xl">🔐</div>
+            <div className="text-2xl">A</div>
             <div>
               <h4 className="font-semibold text-lg mb-2">Secure Authentication</h4>
-              <p className="text-gray-600">Role-based access control with secure JWT authentication.</p>
+              <p className="text-gray-600">Role-based access with JWT sessions and optional MFA.</p>
             </div>
           </div>
           <div className="flex items-start gap-4">
-            <div className="text-2xl">📎</div>
+            <div className="text-2xl">B</div>
             <div>
               <h4 className="font-semibold text-lg mb-2">File Attachments</h4>
-              <p className="text-gray-600">Upload and manage attachments for better issue documentation.</p>
+              <p className="text-gray-600">Attach screenshots and documents directly to tickets.</p>
             </div>
           </div>
           <div className="flex items-start gap-4">
-            <div className="text-2xl">🔍</div>
+            <div className="text-2xl">C</div>
             <div>
-              <h4 className="font-semibold text-lg mb-2">Advanced Search</h4>
-              <p className="text-gray-600">Search and filter services by category, price, location, and provider ratings.</p>
+              <h4 className="font-semibold text-lg mb-2">Smart Filters</h4>
+              <p className="text-gray-600">Search by status, category, priority, or assigned agent.</p>
             </div>
           </div>
           <div className="flex items-start gap-4">
-            <div className="text-2xl">⚡</div>
+            <div className="text-2xl">D</div>
             <div>
-              <h4 className="font-semibold text-lg mb-2">Real-time Updates</h4>
-              <p className="text-gray-600">Fast, responsive interface with instant updates and notifications.</p>
+              <h4 className="font-semibold text-lg mb-2">Audit History</h4>
+              <p className="text-gray-600">Every change is logged for compliance and traceability.</p>
             </div>
           </div>
         </div>

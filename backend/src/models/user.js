@@ -8,17 +8,11 @@ module.exports = (sequelize) => {
     name: { type: DataTypes.STRING, allowNull: false },
     email: { type: DataTypes.STRING, unique: true, allowNull: false },
     password_hash: { type: DataTypes.STRING, allowNull: false },
-    role: { type: DataTypes.STRING, allowNull: false, defaultValue: 'customer' },
+    role: { type: DataTypes.STRING, allowNull: false, defaultValue: 'client' },
     is_active: { type: DataTypes.BOOLEAN, defaultValue: true },
     // MFA fields
     mfa_enabled: { type: DataTypes.BOOLEAN, defaultValue: false },
-    mfa_secret: { type: DataTypes.STRING }, // Encrypted TOTP secret
-    // Additional fields for sharing economy
-    phone: { type: DataTypes.STRING(50) },
-    address: { type: DataTypes.TEXT },
-    bio: { type: DataTypes.TEXT },
-    rating: { type: DataTypes.DECIMAL(3,2), defaultValue: 0.00 },
-    total_orders: { type: DataTypes.INTEGER, defaultValue: 0 }
+    mfa_secret: { type: DataTypes.STRING } // Encrypted TOTP secret
   }, {
     tableName: 'users',
     timestamps: true,

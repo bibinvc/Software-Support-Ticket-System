@@ -67,27 +67,12 @@ const loginRules = [
   body('password').notEmpty().withMessage('Password is required')
 ];
 
-const serviceRules = [
-  body('title').trim().isLength({ min: 3, max: 255 }).withMessage('Title must be between 3 and 255 characters'),
-  body('description').trim().isLength({ min: 10 }).withMessage('Description must be at least 10 characters'),
-  body('price').isFloat({ min: 0 }).withMessage('Price must be a positive number'),
-  body('currency').optional().isLength({ min: 3, max: 3 }).withMessage('Currency must be 3 characters')
-];
-
-const orderRules = [
-  body('service_id').isInt({ min: 1 }).withMessage('Valid service ID is required'),
-  body('quantity').optional().isInt({ min: 1 }).withMessage('Quantity must be a positive integer'),
-  body('special_instructions').optional().trim().isLength({ max: 1000 }).withMessage('Instructions must be less than 1000 characters')
-];
-
 module.exports = {
   sanitizeString,
   validateEmail,
   sanitizeInput,
   validate,
   registerRules,
-  loginRules,
-  serviceRules,
-  orderRules
+  loginRules
 };
 

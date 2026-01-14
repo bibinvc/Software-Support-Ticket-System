@@ -21,10 +21,16 @@ router.get('/', authenticate, async (req,res)=>{
       ];
     }
     
-    if(req.user.role === 'user') {
+    if(req.user.role === 'client') {
       where.created_by = req.user.id;
+    } else if (req.user.role === 'agent') {
+      const assignments = await TicketAssignment.findAll({
+        where: { agent_id: req.user.id },
+        attributes: ['ticket_id']
+      });
+      where.id = { [Op.in]: assignments.map(a => a.ticket_id) };
     } else if(assigned_to) {
-      // For agents/admins, filter by assigned agent
+      // For admins, filter by assigned agent
       const assignments = await TicketAssignment.findAll({
         where: { agent_id: assigned_to },
         attributes: ['ticket_id']
@@ -133,13 +139,23 @@ router.get('/:id', authenticate, async (req,res)=>{
     
     if(!ticket) return res.status(404).json({ error: 'Not Found' });
     
-    // Check access - users can only see their own tickets
-    if(req.user.role === 'user' && ticket.created_by !== req.user.id) {
+    // Check access - clients can only see their own tickets
+    if(req.user.role === 'client' && ticket.created_by !== req.user.id) {
       return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    // Agents can only see tickets assigned to them
+    if (req.user.role === 'agent') {
+      const assignment = await TicketAssignment.findOne({
+        where: { ticket_id: ticket.id, agent_id: req.user.id }
+      });
+      if (!assignment) {
+        return res.status(403).json({ error: 'Forbidden' });
+      }
     }
     
     // Hide internal comments for regular users
-    if(req.user.role === 'user'){
+    if(req.user.role === 'client'){
       ticket.ticket_comments = ticket.ticket_comments?.filter(c=>!c.is_internal) ?? [];
     }
     
@@ -156,8 +172,17 @@ router.patch('/:id', authenticate, async (req,res)=>{
     if(!ticket) return res.status(404).json({ error: 'Not Found' });
     
     // Check access - users can only update their own tickets (limited fields)
-    if(req.user.role === 'user' && ticket.created_by !== req.user.id) {
+    if(req.user.role === 'client' && ticket.created_by !== req.user.id) {
       return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    if (req.user.role === 'agent') {
+      const assignment = await TicketAssignment.findOne({
+        where: { ticket_id: ticket.id, agent_id: req.user.id }
+      });
+      if (!assignment) {
+        return res.status(403).json({ error: 'Forbidden' });
+      }
     }
     
     // Store old values for audit log
@@ -209,7 +234,7 @@ router.patch('/:id', authenticate, async (req,res)=>{
   }
 });
 
-router.post('/:id/assign', authenticate, requireRole(['agent','admin']), async (req,res)=>{
+router.post('/:id/assign', authenticate, requireRole(['admin']), async (req,res)=>{
   try {
     const { agent_id, note } = req.body;
     const ticket_id = req.params.id;
@@ -223,22 +248,32 @@ router.post('/:id/assign', authenticate, requireRole(['agent','admin']), async (
     
     // Remove existing assignment for this ticket
     await TicketAssignment.destroy({ where: { ticket_id } });
-    
-    // Create new assignment
-    const assignment = await TicketAssignment.create({ 
-      ticket_id, 
-      agent_id: agent_id || null, 
-      assigned_by: req.user.id,
-      note 
-    });
-    
+
+    const newAgentId = agent_id || null;
+
     // Log assignment change
     await createAuditLog('ticket', ticket_id, 'assigned', req.user.id, {
       old_agent_id: oldAgentId,
-      new_agent_id: agent_id || null,
+      new_agent_id: newAgentId,
       note: note || null
     });
-    
+
+    if (!newAgentId) {
+      return res.json({
+        ticket_id,
+        agent_id: null,
+        assigned_by: req.user.id,
+        note: note || null
+      });
+    }
+
+    const assignment = await TicketAssignment.create({ 
+      ticket_id, 
+      agent_id: newAgentId, 
+      assigned_by: req.user.id,
+      note 
+    });
+
     const fullAssignment = await TicketAssignment.findByPk(assignment.id, {
       include: [
         { model: require('../models').User, as: 'agent', attributes: ['id', 'name', 'email'] },

@@ -34,40 +34,19 @@ api.interceptors.response.use(
 // Auth
 export const authAPI = {
   login: (email, password, mfaToken) => api.post('/auth/login', { email, password, mfaToken }),
-  register: (name, email, password, role = 'customer') => api.post('/auth/register', { name, email, password, role }),
+  register: (name, email, password) => api.post('/auth/register', { name, email, password, role: 'client' }),
   logout: () => api.post('/auth/logout'),
   setupMFA: () => api.post('/auth/mfa/setup'),
   enableMFA: (token) => api.post('/auth/mfa/enable', { token }),
   disableMFA: (password, mfaToken) => api.post('/auth/mfa/disable', { password, mfaToken })
 };
 
-// Services
-export const servicesAPI = {
-  getAll: (params) => api.get('/services', { params }),
-  getById: (id) => api.get(`/services/${id}`),
-  create: (data) => api.post('/services', data),
-  update: (id, data) => api.patch(`/services/${id}`, data),
-  delete: (id) => api.delete(`/services/${id}`),
-  getMyServices: (params) => api.get('/services/provider/my-services', { params })
-};
-
-// Orders
-export const ordersAPI = {
-  getAll: (params) => api.get('/orders', { params }),
-  getById: (id) => api.get(`/orders/${id}`),
-  create: (data) => api.post('/orders', data),
-  updateStatus: (id, status, cancellationReason) => api.patch(`/orders/${id}/status`, { status, cancellation_reason: cancellationReason }),
-  addMessage: (id, message) => api.post(`/orders/${id}/messages`, { message }),
-  addRating: (id, rating, review, from) => api.post(`/orders/${id}/rating`, { rating, review, from })
-};
-
 // Attachments
 export const attachmentsAPI = {
-  upload: (file, serviceId = null, orderId = null) => {
+  upload: (file, { ticketId = null } = {}) => {
     const formData = new FormData();
     formData.append('file', file);
-    if (serviceId) formData.append('service_id', serviceId);
-    if (orderId) formData.append('order_id', orderId);
+    if (ticketId) formData.append('ticket_id', ticketId);
     return api.post('/attachments', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
@@ -84,7 +63,7 @@ export const usersAPI = {
   update: (id, data) => api.patch(`/users/${id}`, data),
   updatePassword: (id, password, oldPassword) => 
     api.patch(`/users/${id}/password`, { password, old_password: oldPassword }),
-  getProviders: () => api.get('/users/providers/list')
+  getAgents: () => api.get('/users/agents/list')
 };
 
 // Categories
@@ -96,6 +75,30 @@ export const categoriesAPI = {
   delete: (id) => api.delete(`/categories/${id}`)
 };
 
+// Priorities
+export const prioritiesAPI = {
+  getAll: () => api.get('/priorities'),
+  getById: (id) => api.get(`/priorities/${id}`),
+  create: (data) => api.post('/priorities', data),
+  update: (id, data) => api.patch(`/priorities/${id}`, data),
+  delete: (id) => api.delete(`/priorities/${id}`)
+};
+
+// Tickets
+export const ticketsAPI = {
+  getAll: (params) => api.get('/tickets', { params }),
+  getById: (id) => api.get(`/tickets/${id}`),
+  create: (data) => api.post('/tickets', data),
+  update: (id, data) => api.patch(`/tickets/${id}`, data),
+  assign: (id, agentId, note) => api.post(`/tickets/${id}/assign`, { agent_id: agentId, note })
+};
+
+// Ticket comments
+export const commentsAPI = {
+  create: (ticketId, message, isInternal = false) =>
+    api.post(`/tickets/${ticketId}/comments`, { message, is_internal: isInternal })
+};
+
 
 // Statistics
 export const statisticsAPI = {
@@ -105,7 +108,8 @@ export const statisticsAPI = {
 
 // Audit Logs
 export const auditAPI = {
-  getAll: (params) => api.get('/audit', { params })
+  getAll: (params) => api.get('/audit', { params }),
+  getByTicket: (ticketId) => api.get(`/audit/ticket/${ticketId}`)
 };
 
 export default api;
