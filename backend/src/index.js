@@ -1,5 +1,6 @@
 require('dotenv').config();
 const express = require('express');
+const https = require('https');
 const { sequelize } = require('./models');
 const authRoutes = require('./routes/auth');
 const attachmentsRoutes = require('./routes/attachments');
@@ -75,6 +76,30 @@ app.get('/api/health', (req, res) => {
 });
 
 const PORT = process.env.PORT || 4000;
+const SSL_KEY_PATH = process.env.SSL_KEY_PATH || path.join(__dirname, '../certs/key.pem');
+const SSL_CERT_PATH = process.env.SSL_CERT_PATH || path.join(__dirname, '../certs/cert.pem');
+const SSL_PFX_PATH = process.env.SSL_PFX_PATH || path.join(__dirname, '../certs/localhost.pfx');
+const SSL_PFX_PASSPHRASE = process.env.SSL_PFX_PASSPHRASE || '';
+
+const httpsOptions = (() => {
+  try {
+    if (fs.existsSync(SSL_PFX_PATH)) {
+      return {
+        pfx: fs.readFileSync(SSL_PFX_PATH),
+        passphrase: SSL_PFX_PASSPHRASE
+      };
+    }
+    if (fs.existsSync(SSL_KEY_PATH) && fs.existsSync(SSL_CERT_PATH)) {
+      return {
+        key: fs.readFileSync(SSL_KEY_PATH),
+        cert: fs.readFileSync(SSL_CERT_PATH)
+      };
+    }
+  } catch (err) {
+    console.error('Failed to load SSL certificates:', err.message);
+  }
+  return null;
+})();
 
 async function start(){
   try{
@@ -86,10 +111,14 @@ async function start(){
     await sequelize.sync({ alter: false }); // Don't alter existing tables
     console.log('Database models synchronized');
     
-    app.listen(PORT, ()=> {
+    const protocol = httpsOptions ? 'https' : 'http';
+    const server = httpsOptions ? https.createServer(httpsOptions, app) : app;
+    const listen = httpsOptions ? server.listen.bind(server) : app.listen.bind(app);
+
+    listen(PORT, ()=> {
       console.log(`\nServer running on port ${PORT}`);
-      console.log(`API available at http://localhost:${PORT}/api`);
-      console.log(`Health check: http://localhost:${PORT}/api/health\n`);
+      console.log(`API available at ${protocol}://localhost:${PORT}/api`);
+      console.log(`Health check: ${protocol}://localhost:${PORT}/api/health\n`);
     });
   }catch(err){
     console.error('\nFailed to start server\n');

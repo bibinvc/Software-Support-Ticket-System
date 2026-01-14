@@ -41,8 +41,12 @@ const helmetConfig = helmet({
 });
 
 // CORS configuration
+const defaultFrontendUrl = process.env.USE_HTTPS === 'true'
+  ? 'https://localhost:5173'
+  : 'http://localhost:5173';
+
 const corsOptions = {
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: process.env.FRONTEND_URL || defaultFrontendUrl,
   credentials: true,
   optionsSuccessStatus: 200,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],

@@ -32,6 +32,8 @@ export default function Register(){
     } catch(err) {
       if (err.code === 'ERR_NETWORK' || err.message === 'Network Error') {
         setError('Cannot connect to server. Please make sure the backend server is running on http://localhost:4000')
+      } else if (err.response?.data?.details?.length) {
+        setError(err.response.data.details.map(detail => detail.msg).join(', '))
       } else {
         setError(err.response?.data?.error || err.message || 'Registration failed')
       }

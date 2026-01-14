@@ -66,6 +66,7 @@ export default function Header(){
                   </svg>
                 </label>
                 <ul tabIndex={0} className="dropdown-content menu p-2 shadow-lg bg-base-100 rounded-box w-52 mt-2 text-gray-700">
+                  <li><Link to="/security">Security</Link></li>
                   <li><a onClick={handleLogout}>Logout</a></li>
                 </ul>
               </div>

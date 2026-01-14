@@ -12,6 +12,7 @@ import AdminUsers from './pages/AdminUsers'
 import AdminCategories from './pages/AdminCategories'
 import AdminPriorities from './pages/AdminPriorities'
 import AdminAuditLogs from './pages/AdminAuditLogs'
+import Security from './pages/Security'
 import ProtectedRoute from './components/ProtectedRoute'
 import './index.css'
 
@@ -57,6 +58,14 @@ const App = () => (
               <Ticket />
             </ProtectedRoute>
           } 
+        />
+        <Route
+          path="/security"
+          element={
+            <ProtectedRoute>
+              <Security />
+            </ProtectedRoute>
+          }
         />
         <Route 
           path="/admin/users" 
